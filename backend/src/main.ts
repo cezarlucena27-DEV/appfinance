@@ -27,6 +27,14 @@ function loadEnvFile() {
 async function bootstrap() {
   loadEnvFile();
 
+  // Garante que o PrismaClient nao derrube o boot se DATABASE_URL faltar:
+  // placeholder valido so para passar na validacao; queries reais falharao
+  // por rota (visivel nos logs) em vez de derrubar todo o processo.
+  if (!process.env.DATABASE_URL) {
+    console.warn('[aviso] DATABASE_URL nao definida - usando placeholder; rotas de banco vao falhar');
+    process.env.DATABASE_URL = 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
+  }
+
   const app = await NestFactory.create(AppModule);
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
