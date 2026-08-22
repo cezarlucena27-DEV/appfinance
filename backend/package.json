@@ -4,7 +4,7 @@
   "description": "FinanceApp Backend API",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && prisma generate && prisma db push",
     "start": "node dist/main.js",
     "dev": "ts-node src/main.ts",
     "prisma:generate": "prisma generate",
