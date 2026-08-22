@@ -35,6 +35,21 @@ async function bootstrap() {
     process.env.DATABASE_URL = 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
   }
 
+  // Pre-flight: valida a URL construindo um cliente descartavel. Se a env
+  // estiver malformada (ex.: colchetes do placeholder do Supabase), substitui
+  // por placeholder para nao derrubar o processo inteiro.
+  try {
+    const { PrismaClient } = require('@prisma/client');
+    const probe = new PrismaClient();
+    void probe;
+  } catch (e) {
+    console.error(
+      '[aviso] DATABASE_URL invalida - ignorando e usando placeholder:',
+      e instanceof Error ? e.message.split('\n')[0] : e,
+    );
+    process.env.DATABASE_URL = 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
+  }
+
   const app = await NestFactory.create(AppModule);
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
