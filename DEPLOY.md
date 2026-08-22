@@ -1,144 +1,70 @@
-# Deploy: do Git direto para o servidor (Hostinger VPS)
+# Deploy — FinanceApp na Hostinger (Implantação de GitHub)
 
-Como funciona: a cada `git push` na branch `main`, o GitHub Actions conecta no
-seu VPS via SSH e executa `scripts/deploy.sh`, que atualiza o código, compila
-e reinicia o app com PM2.
+Como funciona: o hPanel do Hostinger monitora a branch `main`. A cada `git push`,
+a própria Hostinger clona, compila e reinicia a aplicação Node automaticamente.
+Um único processo NestJS serve a API (`/api/*`) e o frontend React.
 
 ```
-git push origin main  ──>  GitHub Actions  ──>  SSH no VPS  ──>  deploy.sh
-                                                                    ├── git pull
-                                                                    ├── npm ci + build (backend e frontend)
-                                                                    ├── prisma db push
-                                                                    └── pm2 reload financeapp
+git push origin main  ──>  Hostinger detecta  ──>  npm install → build → start
+                                                   (package.json da raiz orquestra tudo)
 ```
-
-O backend também serve o frontend compilado (`frontend/dist`), então tudo roda
-em um único serviço na porta 3000.
 
 ---
 
-## 1. Preparar o servidor (só na primeira vez)
+## Configuração no hPanel (Implantação de GitHub)
 
-Conecte no seu VPS (hPanel Hostinger → VPS → **SSH access** / ou pelo terminal
-do navegador em **Overview → Browser terminal**):
+| Campo | Valor |
+| --- | --- |
+| Repositório | cezarlucena27-DEV/appfinance |
+| Filial | main |
+| Diretório raiz | **(vazio / raiz do repo)** — NÃO usar `backend` |
+| Framework | Padrão (usa os scripts do `package.json` da raiz) |
+| Versão do Node | 20.x ou 22.x |
 
-```bash
-ssh root@SEU_IP
-```
+Se o painel permitir editar comandos manualmente:
 
-Instale Node.js 20, Git, PM2 e Bash:
+- Install: `npm install`
+- Build: `npm run build`
+- Start: `npm run start`
 
-```bash
-apt update && apt install -y git curl
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt install -y nodejs
-npm install -g pm2
-node -v && pm2 -v   # deve mostrar v20+ e 5.x+
-```
+## Variáveis de ambiente (painel → variáveis de ambiente do app)
 
-Crie a pasta e clone o repositório (repo privado: use um token do GitHub —
-GitHub → Settings → Developer settings → Personal access tokens → permissão `repo`):
+| Variável | Valor |
+| --- | --- |
+| `NODE_ENV` | `production` |
+| `JWT_SECRET` | segredo forte novo (nunca o antigo!) |
+| `JWT_REFRESH_SECRET` | outro segredo forte |
+| `ADMIN_KEY` | nova chave do painel admin |
+| `FRONTEND_URL` | `https://sandybrown-jellyfish-697903.hostingersite.com` |
+| `DATABASE_URL` | ver seção SQLite abaixo |
 
-```bash
-mkdir -p /var/www && cd /var/www
-git clone https://SEU_TOKEN@github.com/cezarlucena27-DEV/opencode.git financeapp
-cd financeapp
-```
+Gerar segredos: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
 
-Crie o `.env` de produção:
+## ⚠️ SQLite e persistência de dados
 
-```bash
-cp .env.example backend/.env
-nano backend/.env    # preencha JWT_SECRET, JWT_REFRESH_SECRET, ADMIN_KEY e FRONTEND_URL
-```
+O banco padrão é `backend/prisma/dev.db`, criado dentro da pasta do app. Em
+plataformas que substituem os arquivos a cada deploy, esse dado pode ser
+perdido. Para produção:
 
-Gere segredos fortes com:
-`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
-
-Faça o primeiro deploy manual (as vezes seguintes são automáticas):
-
-```bash
-bash scripts/deploy.sh main
-```
-
-Deixe o PM2 iniciar sozinho se o servidor reiniciar:
-
-```bash
-pm2 startup          # execute o comando que ele imprimir
-pm2 save
-```
-
-Teste: `http://SEU_IP:3000` (libere a porta no firewall: `ufw allow 3000/tcp`
-ou pelo painel Hostinger → Firewall).
+1. Descubra um caminho persistente da sua conta (ex: `/home/uXXXX/`) e defina:
+   `DATABASE_URL="file:/home/uXXXX/financeapp-data/prod.db"`
+   (o Prisma usa essa env no lugar do schema automaticamente)
+2. Faça o primeiro deploy, depois copie o db atual para lá se já tiver dados.
+3. Baixe backup periodicamente pelo Gerenciador de Arquivos.
 
 ---
 
-## 2. Configurar os secrets no GitHub (só uma vez)
+## Alternativa: VPS próprio com PM2
 
-Repositório no GitHub → **Settings → Secrets and variables → Actions → New repository secret**:
-
-| Secret            | Valor                                                        |
-| ----------------- | ------------------------------------------------------------ |
-| `SSH_HOST`        | IP do seu VPS (ex: `123.45.67.89`)                           |
-| `SSH_USER`        | `root` (ou usuário criado no VPS)                            |
-| `SSH_PRIVATE_KEY` | Chave privada SSH (passo abaixo)                             |
-| `APP_DIR`         | `/var/www/financeapp`                                        |
-
-Gerar a chave SSH para o deploy (rode na sua máquina ou no próprio VPS):
-
-```bash
-ssh-keygen -t ed25519 -C "deploy-financeapp" -f ~/deploy_key -N ""
-# Copie o CONTEÚDO de ~/deploy_key (privada) no secret SSH_PRIVATE_KEY
-# Autorize a pública no servidor:
-cat ~/deploy_key.pub >> ~/.ssh/authorized_keys
-```
-
-> No Windows PowerShell use `ssh-keygen -t ed25519 -f $HOME\deploy_key -N '""'`
-
----
-
-## 3. Publicar (o dia a dia)
-
-```bash
-git add .
-git commit -m "minha alteracao"
-git push origin main
-```
-
-Acompanhe em: repositório no GitHub → aba **Actions**. Se ficar verde, já está
-no ar. Deploy manual também é possível: Actions → "Deploy para producao" → Run workflow.
-
----
-
-## 4. Apontar seu domínio (opcional)
-
-1. hPanel → Domínios → DNS → crie registro **A** apontando `@` para o IP do VPS.
-2. Atualize `FRONTEND_URL` no `backend/.env` do servidor com o domínio e rode
-   `bash scripts/deploy.sh main`.
-3. HTTPS: instale Nginx + Certbot quando tiver domínio:
-   `apt install -y nginx certbot python3-certbot-nginx`, proxy de `/` → `http://localhost:3000`,
-   depois `certbot --nginx -d seudominio.com.br`.
-
----
-
-## Segurança — FAÇA ANTES DO PRIMEIRO PUSH
-
-O histórico atual do Git já contém versões antigas do `.env`, `dev.db` e
-`asaas-config.json`. Eles foram removidos do projeto agora, mas **troque estes
-segredos** por segurança:
-
-- [ ] `JWT_SECRET` e `JWT_REFRESH_SECRET` novos no `.env` do servidor
-- [ ] `ADMIN_KEY` nova
-- [ ] Chave de API do Asaas (painel Asaas) — o `asaas-config.json` agora só existe no servidor
-
----
+O histórico deste repo também contém o pipeline GitHub Actions + PM2
+(`scripts/deploy.sh`), útil se migrar para uma VPS (Hostinger KVM etc).
+Passo a passo completo na versão anterior deste arquivo ou sob demanda.
 
 ## Problemas comuns
 
 | Sintoma | Solução |
 | --- | --- |
-| Actions falha em `Permission denied (publickey)` | Secret `SSH_PRIVATE_KEY` errado ou pub key não está no `authorized_keys` |
-| Build do frontend falha no servidor (memória) | Adicione swap: `fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile` |
-| App não sobe após deploy | `pm2 logs financeapp --lines 50` no VPS |
-| Erro de banco | Verifique `backend/.env` (`DATABASE_URL`) e rode `npx prisma db push` dentro de `backend/` |
-| Porta 3000 bloqueada | Libere no firewall do hPanel/UFW |
+| `Cannot GET /` | Frontend não compilado/achado — veja logs; garanta raiz = raiz do repo e commit recente |
+| Falha no build (memória) | Reduza para build só do backend + commite `frontend/dist` pronto |
+| Erro de banco no start | Confira `DATABASE_URL`; rode `npm run prisma:push --prefix backend` |
+| App não reiniciou | Force "Redeploy" no hPanel e confira os logs de implantação |

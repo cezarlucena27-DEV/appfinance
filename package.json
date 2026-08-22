@@ -1,0 +1,14 @@
+{
+  "name": "financeapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FinanceApp - monorepo (backend NestJS + frontend React servidos por um unico processo)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "postinstall": "npm --prefix backend ci --no-audit --no-fund && npm --prefix frontend ci --no-audit --no-fund",
+    "build": "npm --prefix backend run build && npm --prefix backend run prisma:generate && npm --prefix backend run prisma:push && npm --prefix frontend run build",
+    "start": "node backend/dist/main.js"
+  }
+}

@@ -53,7 +53,8 @@ async function bootstrap() {
 
   const frontendCandidates = [
     process.env.FRONTEND_DIST,
-    join(__dirname, '..', '..', '..', 'frontend', 'dist'),
+    join(__dirname, '..', '..', 'frontend', 'dist'),
+    join(process.cwd(), 'frontend', 'dist'),
     join(process.cwd(), '..', 'frontend', 'dist'),
   ].filter(Boolean) as string[];
   const frontendDist = frontendCandidates.find((c) => existsSync(join(c, 'index.html')));
