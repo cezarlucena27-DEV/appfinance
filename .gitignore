@@ -5,6 +5,8 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+# Exceto o frontend compilado embutido no backend (servido em producao)
+!backend/public/
 
 # Ambiente e segredos
 .env

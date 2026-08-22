@@ -53,6 +53,9 @@ async function bootstrap() {
 
   const frontendCandidates = [
     process.env.FRONTEND_DIST,
+    join(__dirname, '..', '..', 'public'),
+    join(process.cwd(), 'public'),
+    join(__dirname, '..', 'public'),
     join(__dirname, '..', '..', 'frontend', 'dist'),
     join(process.cwd(), 'frontend', 'dist'),
     join(process.cwd(), '..', 'frontend', 'dist'),
