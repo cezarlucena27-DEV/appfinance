@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ── IDENTIDADE E ACESSO ─────────────────────────────────────
+
+model User {
+  id                   String    @id @default(uuid())
+  name                 String
+  email                String    @unique
+  passwordHash         String
+  globalRole           String    @default("regular") // platform_admin, regular
+  isActive             Boolean   @default(true)
+  deactivatedMessage  String?
+  isAdminApproved      Boolean   @default(false)
+  approvedBy           String?
+  adminPanels          String    @default("all")
+  defaultsCreated      Boolean   @default(false)
+  createdById          String?
+  createdBy            User?     @relation("CreatedUsers", fields: [createdById], references: [id])
+  createdUsers         User[]    @relation("CreatedUsers")
+  onboardingCompleted  Boolean   @default(false)
+  segmentId           String?
+  segment             Segment?          @relation(fields: [segmentId], references: [id])
+  gender              String?
+  workDaysPerMonth    Int?
+  workHoursPerDay     Float?
+  weekendWork         String            @default("none")
+  createdAt           DateTime          @default(now())
+  lastLogin           DateTime?
+  lastSeenAt          DateTime?
+  updatedAt           DateTime          @updatedAt
+  memberships         WorkspaceMember[]
+  accounts            Account[]
+  transactions        Transaction[]
+  categories          Category[]
+  cards               Card[]
+  budgets             Budget[]
+  goals               Goal[]
+  sharedAccounts      AccountShare[]
+  subscription        Subscription?
+  payments            PaymentHistory[]
+  reminderViews       ReminderView[]
+  ownedWorkspaces     Workspace[]
+  auditLogs           AuditLog[]
+}
+
+model Workspace {
+  id              String            @id @default(uuid())
+  name            String
+  ownerId         String
+  owner           User              @relation(fields: [ownerId], references: [id])
+  plan            String            @default("free")
+  asaasCustomerId String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  members         WorkspaceMember[]
+  subscription    Subscription?
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  role        String    @default("member") // master, admin, member
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, workspaceId])
+}
+
+// ── FINANCEIRO ──────────────────────────────────────────────
+
+model Account {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  name           String
+  type           String        @default("wallet")
+  initialBalance Float         @default(0)
+  currentBalance Float         @default(0)
+  icon           String        @default("wallet")
+  color          String        @default("#2563EB")
+  isPrimary      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  transactions   Transaction[]
+  cards          Card[]
+  goals          Goal[]
+  shares         AccountShare[]
+}
+
+model AccountShare {
+  id        String   @id @default(uuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([accountId, userId])
+}
+
+model Transaction {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id])
+  accountId          String
+  account            Account   @relation(fields: [accountId], references: [id])
+  cardId             String?
+  card               Card?     @relation(fields: [cardId], references: [id])
+  categoryId         String?
+  category           Category? @relation(fields: [categoryId], references: [id])
+  type               String // income, expense, transfer
+  amount             Float
+  description        String?
+  date               DateTime
+  isRecurring        Boolean   @default(false)
+  recurrenceType     String?
+  totalInstallments  Int?
+  currentInstallment Int?
+  dueDate            DateTime?
+  isPaid             Boolean   @default(true)
+  paymentMethod      String?
+  attachmentUrl      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id])
+  name         String
+  icon         String        @default("tag")
+  color        String        @default("#64748B")
+  type         String // income, expense
+  isDefault    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Card {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  name             String
+  brand            String            @default("other")
+  limit            Float
+  closingDay       Int
+  dueDay           Int
+  lastDigits       String?
+  accountId        String
+  account          Account           @relation(fields: [accountId], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  transactions     Transaction[]
+}
+
+model Budget {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  month       Int
+  year        Int
+  limitAmount Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, categoryId, month, year])
+}
+
+model Goal {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  name          String
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  targetDate    DateTime
+  accountId     String?
+  account       Account? @relation(fields: [accountId], references: [id])
+  icon          String   @default("target")
+  color         String   @default("#10B981")
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── ASSINATURA ──────────────────────────────────────────────
+
+model Plan {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  price         Float
+  description   String?
+  createdAt     DateTime       @default(now())
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  workspaceId String    @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  planId      String?
+  plan        Plan?     @relation(fields: [planId], references: [id])
+  asaasId     String?
+  billingType String?
+  billingDay  Int?
+  status      String    @default("active")
+  nextDueDate DateTime?
+  value       Float     @default(0)
+  blocked     Boolean   @default(false)
+  blockReason String?
+  accessUntil DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model PaymentHistory {
+  id          String       @id @default(uuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  planId      String?
+  amount      Float
+  status      String       @default("paid")
+  dueDate     DateTime
+  paidAt      DateTime?
+  notes       String?
+  registeredBy String?
+  createdAt   DateTime     @default(now())
+}
+
+model ReminderView {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  daysUntilDue Int
+  viewedAt     DateTime @default(now())
+}
+
+// ── LOGS ────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  oldValues String?
+  newValues String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+// ── SEGMENTOS / PARCEIROS ───────────────────────────────────
+
+model Segment {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  icon      String   @default("briefcase")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  users     User[]
+}

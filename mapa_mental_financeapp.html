@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mapa Mental — FinanceApp</title>
+<style>body{margin:0} svg.markmap{width:100vw;height:100vh}</style>
+<script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.16"></script>
+</head>
+<body>
+<div class="markmap">
+<script type="text/template">
+---
+markmap:
+  maxWidth: 320
+  initialExpandLevel: 2
+  spacingVertical: 6
+---
+# Sistema FinanceApp
+
+## Documentação (raiz)
+- especificacao_tecnica_financeapp.md
+- GUIA_MASTER.md
+- GUIA_ONBOARDING.md
+- MANUAL_USUARIO.md
+- FAQ.md
+- POLITICAS.md
+- logs (backend.out/.err, frontend.log)
+
+## Backend — NestJS 10 + Prisma 5 + SQLite
+
+### Módulos (14)
+- **auth** — JWT/Passport + bcryptjs, roles platform_admin/regular
+- users
+- accounts
+- transactions — recorrentes, parceladas
+- categories — + default-categories.ts
+- cards — limite, fechamento/vencimento
+- budgets — por categoria/mês
+- goals — metas com conta vinculada
+- reports — PDF (pdfkit) + Excel (ExcelJS)
+- subscriptions — integração Asaas
+- admin — aprovação e painéis master
+- onboarding
+- segments — segmentos/parceiros
+
+### common/
+- guards: jwt-auth, roles, admin-panel
+- decorators: @Roles, @CurrentUser, @AdminPanel
+- interceptors: AuditInterceptor → AuditLog
+- utils: excel.util.ts
+
+### prisma/schema.prisma (16 models)
+- **Identidade**: User, Workspace, WorkspaceMember (master/admin/member)
+- **Financeiro**: Account, AccountShare, Transaction, Category, Card, Budget, Goal
+- **Monetização**: Plan, Subscription, PaymentHistory, ReminderView
+- **Auditoria**: AuditLog
+- **Segmentos**: Segment
+- dev.db + seed.ts / seed-demo.ts
+
+## Frontend — React 18 + Vite + TS + Tailwind
+
+### pages (17)
+- Login / Register / ForgotPassword
+- Onboarding
+- Dashboard
+- Transactions
+- Accounts
+- Cards
+- Categories
+- Budgets
+- Goals
+- Reports
+- Subscription
+- Settings
+- Admin / MasterDashboard
+- NotFound
+
+### components
+- Layout
+- ReorderablePanels
+- ThemeProvider
+
+### lib
+- api.ts (axios)
+- plan.ts (planos/limites)
+- translations.ts (i18n)
+
+### store / types
+- useStore.ts (Zustand)
+- types/index.ts
+
+### stack extra
+- react-router-dom v6
+- recharts (gráficos)
+- lucide-react (ícones)
+- qrcode.react (Pix)
+- PWA (manifest.json)
+
+## analis/ — projeto à parte (Node puro, zero dependências)
+- server.js + iniciar.bat (porta 3210, ALLOW_PRIVATE=1)
+- lib: fetch, parse, scan, metrics, reach, store
+- public: index.html, app.js/app.css, exemplo.html, planos.html
+- **Índice de Visibilidade Cognitiva** (0–100)
+  - Latência de leitura 30%
+  - Fronteira de acesso 20%
+  - Cartografia do conteúdo 20%
+  - Densidade factual 15%
+  - Coerência estrutural 15%
+  - Alcance em 20 agentes de IA
+  - Funil de venda (planos + WhatsApp)
+</script>
+</div>
+</body>
+</html>

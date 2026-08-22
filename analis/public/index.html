@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Como IAs enxergam sua página</title>
+<meta name="description" content="Cole o endereço do seu site e veja a nota de 0 a 100 que os modelos de IA dão para a sua página, e o que uma pessoa vê no lugar.">
+<link rel="canonical" href="http://localhost:3210/">
+<meta name="scan-token" content="__SCAN_TOKEN__">
+<meta name="base-url" content="/">
+<meta name="planos-url" content="/planos">
+<meta name="whatsapp" content="5511999999999">
+<meta name="whatsapp-msg" content="Olá! Analisei o site {dominio} e a nota foi {nota} de 100. Quero o plano de correção.">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+
+<div id="loading" hidden>
+  <div class="progress"><i></i></div>
+</div>
+
+<div class="wrap">
+  <section class="hero" id="hero">
+    <p class="brand">Índice de Visibilidade Cognitiva</p>
+    <h1 class="title">Como IAs enxergam sua página</h1>
+    <p class="sub">
+      Uma pessoa vê a sua página inteira. Um modelo de IA vê outra coisa, e é a versão dele
+      que vira resposta, indicação e venda. Cole o endereço e compare as duas.
+    </p>
+    <form class="field" id="form" autocomplete="off">
+      <input id="url" type="text" placeholder="seudominio.com.br" spellcheck="false"
+             autocapitalize="off" autocorrect="off" inputmode="url" maxlength="2048">
+      <button type="submit" id="go">Analisar</button>
+    </form>
+    <p class="hint" id="hint">Sem cadastro. Sem e-mail. Leva alguns segundos.</p>
+    <p class="err" id="err" hidden></p>
+  </section>
+</div>
+
+<div id="result"></div>
+
+<div class="wrap">
+  <article class="doc">
+
+    <h2 id="o-que-faz">O que esta ferramenta faz</h2>
+    <p>
+      Ela abre o endereço que você informar duas vezes, do mesmo jeito que dois leitores
+      diferentes abririam: uma pessoa com um navegador comum e um sistema de inteligência
+      artificial. Depois coloca as duas versões lado a lado, na mesma tela, sem edição
+      nenhuma. O que aparece à esquerda é a sua página como você a conhece. O que aparece à
+      direita é tudo o que sobra dela quando quem lê é uma máquina.
+    </p>
+    <p>
+      Do resultado dessa comparação sai uma nota de 0 a 100, o Índice de Visibilidade
+      Cognitiva. Ela responde a uma pergunta só, e é a pergunta que mais importa hoje:
+      quando alguém perguntar a uma inteligência artificial sobre o assunto que você domina,
+      a sua página tem condição de ser a fonte da resposta? Nota acima de 90 quer dizer que
+      sim. Qualquer coisa abaixo disso quer dizer que existe conteúdo importante seu que
+      simplesmente não chega até lá.
+    </p>
+    <p>
+      A análise é feita inteiramente de fora, como qualquer visitante faria, e leva poucos
+      segundos. Nenhum arquivo do seu site é modificado e nenhuma senha é pedida. O conteúdo
+      da sua página não é guardado em lugar nenhum: ele é lido, medido e descartado na hora.
+      Ficam registrados apenas os dados de resultado da consulta, e nenhum dado ou informação
+      adicional sua é armazenado ou solicitado durante o uso e a análise.
+    </p>
+
+    <h2 id="diferenca">Por que uma IA não enxerga o que você enxerga</h2>
+    <p>
+      Um navegador é um leitor paciente. Ele monta a sua página aos poucos, espera as partes
+      chegarem, organiza tudo e só então mostra o resultado pronto para a pessoa. Esse
+      trabalho todo acontece em silêncio, e por isso ninguém percebe o quanto ele é grande.
+    </p>
+    <p>
+      Um sistema de inteligência artificial não faz nada disso. Ele pede a sua página, pega
+      o que vier na resposta e segue adiante. Não espera, não monta, não volta para conferir
+      se entendeu direito. O que estiver pronto na hora, ele lê. O que não estiver, deixa de
+      existir, e não existe uma segunda chance, porque ele não retorna para tentar de novo.
+    </p>
+    <p>
+      A consequência prática é desconfortável: o site que você olha todo dia e considera
+      bonito, claro e completo pode ser, para esses sistemas, uma página quase vazia. Não é
+      culpa de quem construiu. A maioria dos sites bem feitos foi criada numa época em que
+      só pessoas liam páginas, e ninguém precisava se preocupar com isso.
+    </p>
+
+    <h2 id="componentes">O que o Índice de Visibilidade Cognitiva mede</h2>
+    <p>
+      A nota final é composta por cinco componentes com pesos diferentes. Cada um cobre uma
+      forma distinta de a sua mensagem se perder no caminho entre o seu servidor e a resposta
+      que o cliente lê. Eles são apresentados por nome, nota e consequência, nunca por instrução
+      técnica, porque diagnóstico e conserto são coisas separadas.
+    </p>
+
+    <h3 id="latencia-cognitiva">Latência Cognitiva</h3>
+    <p>
+      O componente de maior peso. Mede quanto da sua mensagem chega intacta ao modelo no
+      primeiro contato. Quando essa nota é baixa, o sistema lê fragmentos do seu site e
+      conclui o resto sozinho, quase sempre errado e sempre em favor de quem ele conseguiu
+      ler por completo.
+    </p>
+
+    <h3 id="fronteira-operacional">Fronteira Operacional</h3>
+    <p>
+      Mede quantas portas de entrada estão realmente abertas para os sistemas que geram
+      respostas. Muita empresa descobre tarde que estava recusando exatamente as visitas que
+      chegariam já com intenção de compra, sem pagar nada por elas.
+    </p>
+
+    <h3 id="cartografia-de-origem">Cartografia de Origem</h3>
+    <p>
+      Mede se existe alguma orientação clara guiando o modelo pelo seu conteúdo. Sem ela, a
+      inteligência artificial escolhe sozinha qual página sua vai citar. Raramente é a que
+      vende.
+    </p>
+
+    <h3 id="densidade-declarativa">Densidade Declarativa</h3>
+    <p>
+      Mede quanto do seu conteúdo está afirmado num formato que a máquina lê como fato, e
+      não como opinião a ser interpretada. É o componente que decide se o preço, o formato e
+      a promessa da sua oferta chegam certos do outro lado.
+    </p>
+
+    <h3 id="coerencia-de-sinal">Coerência de Sinal</h3>
+    <p>
+      Mede se a estrutura da sua página sustenta uma citação sem ambiguidade. Quando essa
+      nota cai, você continua sendo citado, mas o resumo sai diferente do que você diria, e
+      é esse resumo que o cliente lê antes de decidir.
+    </p>
+
+    <h2 id="perguntas-frequentes">Perguntas frequentes</h2>
+
+    <h3 id="faq-seo">Isso é a mesma coisa que SEO?</h3>
+    <p>Não. O SEO tradicional trata de posição em uma lista de links. Aqui o assunto é outro: se o seu conteúdo é compreendido por um sistema que responde no lugar da lista. Um site pode ir muito bem em um e muito mal no outro ao mesmo tempo, e é exatamente isso que a comparação lado a lado mostra.</p>
+
+    <h3 id="faq-google">Por que meu site aparece bem no Google e mal aqui?</h3>
+    <p>Porque quem lê é diferente. O buscador tradicional teve vinte anos para aprender a interpretar páginas confusas. Os sistemas de IA são recentes, leem rápido, leem uma vez e não voltam para tentar entender melhor. O que passa despercebido em um se torna um problema no outro.</p>
+
+    <h3 id="faq-cache">A nota muda se eu analisar de novo?</h3>
+    <p>A nota do mesmo endereço fica em cache por alguns minutos, então uma segunda análise imediata devolve o mesmo resultado. Passado esse intervalo, ela é recalculada do zero e a medição nova entra no histórico do endereço. Se você mexer na sua página, o número acompanha. E vale saber que ele muda sozinho também: hospedagem, tema e os próprios sistemas de IA mudam com o tempo, e a nota muda junto sem que ninguém toque no site.</p>
+
+    <h3 id="faq-seguranca">Vocês alteram alguma coisa no meu site?</h3>
+    <p>Nada. A análise é somente de leitura, feita de fora, como qualquer visitante faria. Nenhum arquivo é modificado, nenhuma senha é pedida e nenhum acesso é solicitado. Ninguém precisa autorizar coisa alguma para que a leitura aconteça, porque ela usa o mesmo caminho que qualquer pessoa usa ao abrir o seu endereço.</p>
+
+    <h3 id="faq-dados">O que fica registrado depois da análise?</h3>
+    <p>Apenas os dados de resultado das consultas realizadas: o endereço analisado, a data e os números da análise, exatamente os mesmos que apareceram na sua tela. O conteúdo da sua página não é guardado, em nenhuma hipótese: ele é lido, medido e descartado no mesmo instante, e não é reproduzido, publicado nem repassado a terceiros. Nenhum dado ou informação adicional sua é armazenado, e nada além do endereço é solicitado durante o uso e a análise de um site. Se você preferir que o histórico do seu endereço seja removido, basta pedir.</p>
+
+    <h3 id="faq-anonimato">Preciso me identificar para analisar uma página?</h3>
+    <p>Não. Não existe cadastro, não existe formulário antes do resultado e nenhum dado pessoal é pedido em momento algum. O endereço de um site é informação pública por natureza, e é só com ela que a análise trabalha. Durante o uso e a análise, nada além dele é solicitado a você.</p>
+
+    <h3 id="faq-tecnico">Preciso entender de tecnologia para ler o resultado?</h3>
+    <p>Não. O número no topo já responde a pergunta principal. Os cinco componentes existem para mostrar onde o problema se concentra, e cada um vem com uma frase em português explicando o que aquilo custa para o seu negócio. Nenhum termo técnico é necessário.</p>
+
+    <h3 id="faq-nota-baixa">Uma nota baixa significa que meu site é ruim?</h3>
+    <p>Não significa isso. A maioria dos sites bem feitos tira nota baixa aqui, porque foram construídos para pessoas em uma época em que ninguém precisava se preocupar com máquinas lendo o conteúdo. Nota baixa não é defeito de construção. É defasagem de contexto.</p>
+
+  </article>
+
+  <footer>
+    Analisamos o endereço informado do mesmo modo que um sistema de IA analisaria.
+    Nada é alterado no seu site, o conteúdo da sua página não é armazenado e nenhum dado
+    seu é solicitado.
+    <br>
+    O Índice de Visibilidade Cognitiva é uma métrica proprietária. Os critérios de cada
+    componente são calculados no servidor e não são públicos.
+  </footer>
+</div>
+
+<script src="/assets/app.js"></script>
+</body>
+</html>

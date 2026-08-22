@@ -1,0 +1,601 @@
+
+> financeapp-frontend@1.0.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m884[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[2m15:32:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Subscription.tsx, /src/index.css[22m
+[2m15:32:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Subscription.tsx, /src/index.css[22m
+[2m15:32:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Subscription.tsx, /src/index.css[22m
+[2m15:32:38[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Subscription.tsx, /src/index.css[22m
+[2m15:32:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Subscription.tsx, /src/index.css[22m
+[2m15:39:58[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m15:39:58[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m15:40:10[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m15:40:11[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m15:40:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m15:40:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m15:40:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m15:40:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m15:41:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m15:41:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m15:41:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m15:43:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m15:44:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m15:56:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m15:57:05[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m16:03:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/accounts[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions?startDate=2026-08-01T03%3A00%3A00.000Z&endDate=2026-08-21T19%3A03%3A27.903Z[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/summary[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/budgets[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/goals[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/accounts[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions?startDate=2026-08-01T03%3A00%3A00.000Z&endDate=2026-08-21T19%3A03%3A27.921Z[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/summary[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/budgets[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/goals[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/accounts[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions?startDate=2026-08-01T03%3A00%3A00.000Z&endDate=2026-08-21T19%3A03%3A31.892Z[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/summary[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/budgets[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/goals[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/subscriptions/reminder[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/accounts[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions?startDate=2026-08-01T03%3A00%3A00.000Z&endDate=2026-08-21T19%3A03%3A31.894Z[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/summary[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/budgets[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/goals[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/subscriptions/reminder[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:44[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/accounts[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions?startDate=2026-08-01T03%3A00%3A00.000Z&endDate=2026-08-21T19%3A03%3A45.886Z[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/summary[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/budgets[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/goals[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/subscriptions/reminder[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/accounts[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions?startDate=2026-08-01T03%3A00%3A00.000Z&endDate=2026-08-21T19%3A03%3A45.904Z[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/summary[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/budgets[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/goals[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/transactions/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:46[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m16:03:53[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:53[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:03:53[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/subscriptions/reminder[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:12[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/Layout.tsx, /src/index.css[22m
+[2m16:04:12[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:12[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/subscriptions/reminder[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:12[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:20[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m16:04:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m16:04:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:04:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:05:08[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m16:05:09[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:05:09[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/all-financeiro?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:05:09[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/subscriptions-finance[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:05:09[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/monthly-balances?[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:05:09[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/stats[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:05:09[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/admin/users[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m16:28:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m16:29:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m16:30:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m20:16:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m20:18:37[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m20:18:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m20:26:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m20:26:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m20:26:23[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m20:26:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Login.tsx, /src/index.css[22m
+[2m23:38:26[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m23:38:26[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m23:38:47[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/login[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m23:39:07[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/login[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m23:39:08[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/login[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m23:39:18[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/login[39m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1339:18)
+    at afterConnectMultiple (node:net:1942:7)
+[2m23:43:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Accounts.tsx, /src/index.css[22m
+[2m23:43:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Accounts.tsx, /src/index.css[22m
+[2m23:43:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Accounts.tsx, /src/index.css[22m
+[2m23:43:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Accounts.tsx, /src/index.css[22m
+[2m23:43:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m23:44:43[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/types/index.ts[22m
+[2m23:46:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Reports.tsx, /src/index.css[22m
+[2m23:46:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Settings.tsx, /src/index.css[22m
+[2m23:46:17[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Settings.tsx[22m Could not Fast Refresh ("MODULE_LIST" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m23:46:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/pages/Admin.tsx[22m
+[2m23:46:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Settings.tsx, /src/index.css[22m
+[2m23:46:25[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Settings.tsx[22m Could not Fast Refresh ("MODULE_LIST" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m23:46:25[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/pages/Admin.tsx[22m
+[2m00:08:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/MasterDashboard.tsx, /src/index.css[22m
+[2m00:45:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:48:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:49:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:49:15[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:49:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:49:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:49:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:54:17[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Accounts.tsx, /src/index.css[22m
+[2m00:54:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Budgets.tsx, /src/index.css[22m
+[2m00:54:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Goals.tsx, /src/index.css[22m
+[2m00:54:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:54:27[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Cards.tsx, /src/index.css[22m
+[2m00:54:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m00:54:35[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m00:54:36[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/MasterDashboard.tsx, /src/index.css[22m
+[2m00:54:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/MasterDashboard.tsx, /src/index.css[22m
+[2m00:54:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Subscription.tsx, /src/index.css[22m
+[2m00:54:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Subscription.tsx, /src/index.css[22m
+[2m00:55:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Subscription.tsx, /src/index.css[22m
+[2m00:55:48[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m00:55:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Settings.tsx, /src/index.css[22m
+[2m00:55:54[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Settings.tsx[22m Could not Fast Refresh ("MODULE_LIST" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m00:55:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/pages/Admin.tsx[22m
+[2m00:55:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Cards.tsx, /src/index.css[22m
+[2m00:56:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Admin.tsx, /src/index.css[22m
+[2m00:56:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Settings.tsx, /src/index.css[22m
+[2m00:56:30[22m [36m[1m[vite][22m[39m [33mhmr invalidate [39m[2m/src/pages/Settings.tsx[22m Could not Fast Refresh ("MODULE_LIST" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[2m00:56:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/pages/Admin.tsx[22m
+[2m00:56:51[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/MasterDashboard.tsx, /src/index.css[22m
+[2m00:57:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Reports.tsx, /src/index.css[22m
+[2m00:57:50[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Budgets.tsx, /src/index.css[22m
+[2m00:57:52[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Cards.tsx, /src/index.css[22m
+[2m00:57:54[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Goals.tsx, /src/index.css[22m
+[2m00:57:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Transactions.tsx, /src/index.css[22m
+[2m00:58:02[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Accounts.tsx, /src/index.css[22m
+[2m00:58:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/MasterDashboard.tsx, /src/index.css[22m
+[2m00:58:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.tsx, /src/index.css[22m
+[2m00:58:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/Categories.tsx, /src/index.css[22m

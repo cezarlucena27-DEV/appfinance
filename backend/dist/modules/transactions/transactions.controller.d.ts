@@ -1,0 +1,232 @@
+import { TransactionsService } from './transactions.service';
+import { CreateTransactionDto, UpdateTransactionDto } from './dto/transaction.dto';
+export declare class TransactionsController {
+    private transactionsService;
+    constructor(transactionsService: TransactionsService);
+    findAll(req: any, startDate?: string, endDate?: string, type?: string): Promise<({
+        account: {
+            id: string;
+            userId: string;
+            name: string;
+            type: string;
+            initialBalance: number;
+            currentBalance: number;
+            icon: string;
+            color: string;
+            isPrimary: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        category: {
+            id: string;
+            userId: string | null;
+            name: string;
+            type: string;
+            icon: string;
+            color: string;
+            createdAt: Date;
+            isDefault: boolean;
+        };
+        card: {
+            id: string;
+            userId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            accountId: string;
+            brand: string;
+            limit: number;
+            closingDay: number;
+            dueDay: number;
+        };
+    } & {
+        id: string;
+        userId: string;
+        type: string;
+        createdAt: Date;
+        updatedAt: Date;
+        categoryId: string;
+        accountId: string;
+        cardId: string | null;
+        amount: number;
+        description: string | null;
+        date: Date;
+        isRecurring: boolean;
+        recurrenceType: string | null;
+        totalInstallments: number | null;
+        currentInstallment: number | null;
+        dueDate: Date | null;
+        isPaid: boolean;
+        attachmentUrl: string | null;
+    })[]>;
+    getMonthlySummary(req: any): Promise<{
+        income: number;
+        expenses: number;
+        balance: number;
+    }>;
+    getByCategory(req: any): Promise<unknown[]>;
+    findOne(id: string, req: any): Promise<{
+        account: {
+            id: string;
+            userId: string;
+            name: string;
+            type: string;
+            initialBalance: number;
+            currentBalance: number;
+            icon: string;
+            color: string;
+            isPrimary: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        category: {
+            id: string;
+            userId: string | null;
+            name: string;
+            type: string;
+            icon: string;
+            color: string;
+            createdAt: Date;
+            isDefault: boolean;
+        };
+        card: {
+            id: string;
+            userId: string;
+            name: string;
+            createdAt: Date;
+            updatedAt: Date;
+            accountId: string;
+            brand: string;
+            limit: number;
+            closingDay: number;
+            dueDay: number;
+        };
+    } & {
+        id: string;
+        userId: string;
+        type: string;
+        createdAt: Date;
+        updatedAt: Date;
+        categoryId: string;
+        accountId: string;
+        cardId: string | null;
+        amount: number;
+        description: string | null;
+        date: Date;
+        isRecurring: boolean;
+        recurrenceType: string | null;
+        totalInstallments: number | null;
+        currentInstallment: number | null;
+        dueDate: Date | null;
+        isPaid: boolean;
+        attachmentUrl: string | null;
+    }>;
+    create(dto: CreateTransactionDto, req: any): Promise<{
+        account: {
+            id: string;
+            userId: string;
+            name: string;
+            type: string;
+            initialBalance: number;
+            currentBalance: number;
+            icon: string;
+            color: string;
+            isPrimary: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        category: {
+            id: string;
+            userId: string | null;
+            name: string;
+            type: string;
+            icon: string;
+            color: string;
+            createdAt: Date;
+            isDefault: boolean;
+        };
+    } & {
+        id: string;
+        userId: string;
+        type: string;
+        createdAt: Date;
+        updatedAt: Date;
+        categoryId: string;
+        accountId: string;
+        cardId: string | null;
+        amount: number;
+        description: string | null;
+        date: Date;
+        isRecurring: boolean;
+        recurrenceType: string | null;
+        totalInstallments: number | null;
+        currentInstallment: number | null;
+        dueDate: Date | null;
+        isPaid: boolean;
+        attachmentUrl: string | null;
+    }>;
+    update(id: string, dto: UpdateTransactionDto, req: any): Promise<{
+        account: {
+            id: string;
+            userId: string;
+            name: string;
+            type: string;
+            initialBalance: number;
+            currentBalance: number;
+            icon: string;
+            color: string;
+            isPrimary: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+        };
+        category: {
+            id: string;
+            userId: string | null;
+            name: string;
+            type: string;
+            icon: string;
+            color: string;
+            createdAt: Date;
+            isDefault: boolean;
+        };
+    } & {
+        id: string;
+        userId: string;
+        type: string;
+        createdAt: Date;
+        updatedAt: Date;
+        categoryId: string;
+        accountId: string;
+        cardId: string | null;
+        amount: number;
+        description: string | null;
+        date: Date;
+        isRecurring: boolean;
+        recurrenceType: string | null;
+        totalInstallments: number | null;
+        currentInstallment: number | null;
+        dueDate: Date | null;
+        isPaid: boolean;
+        attachmentUrl: string | null;
+    }>;
+    remove(id: string, req: any): Promise<{
+        id: string;
+        userId: string;
+        type: string;
+        createdAt: Date;
+        updatedAt: Date;
+        categoryId: string;
+        accountId: string;
+        cardId: string | null;
+        amount: number;
+        description: string | null;
+        date: Date;
+        isRecurring: boolean;
+        recurrenceType: string | null;
+        totalInstallments: number | null;
+        currentInstallment: number | null;
+        dueDate: Date | null;
+        isPaid: boolean;
+        attachmentUrl: string | null;
+    }>;
+}
