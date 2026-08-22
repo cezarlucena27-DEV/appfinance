@@ -5,8 +5,8 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "prisma generate && tsc",
-    "postbuild": "prisma db push --skip-generate || echo [aviso] prisma db push falhou - ver logs",
-    "prestart": "prisma db push --skip-generate || echo [aviso] prisma db push falhou - ver logs",
+    "postbuild": "node scripts/db-push.js",
+    "prestart": "node scripts/db-push.js",
     "start": "node dist/main.js",
     "dev": "ts-node src/main.ts",
     "prisma:generate": "prisma generate",
