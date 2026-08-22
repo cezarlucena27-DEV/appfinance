@@ -51,15 +51,21 @@ async function bootstrap() {
   const { ActivityInterceptor } = await import('./common/interceptors/activity.interceptor');
   app.useGlobalInterceptors(new ActivityInterceptor(onlineTracker));
 
-  const frontendDist = process.env.FRONTEND_DIST
-    || join(process.cwd(), '..', 'frontend', 'dist');
-  if (existsSync(join(frontendDist, 'index.html'))) {
+  const frontendCandidates = [
+    process.env.FRONTEND_DIST,
+    join(__dirname, '..', '..', '..', 'frontend', 'dist'),
+    join(process.cwd(), '..', 'frontend', 'dist'),
+  ].filter(Boolean) as string[];
+  const frontendDist = frontendCandidates.find((c) => existsSync(join(c, 'index.html')));
+  if (frontendDist) {
     app.use(express.static(frontendDist));
     app.use((req, res, next) => {
       if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
       res.sendFile(join(frontendDist, 'index.html'));
     });
     console.log(`Frontend servido de ${frontendDist}`);
+  } else {
+    console.warn(`[AVISO] Frontend nao encontrado. Caminhos testados: ${frontendCandidates.join(' | ')}`);
   }
 
   const port = process.env.PORT || 3000;
