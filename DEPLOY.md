@@ -40,21 +40,28 @@ Se o painel permitir editar comandos manualmente:
 | `JWT_REFRESH_SECRET` | outro segredo forte |
 | `ADMIN_KEY` | nova chave do painel admin |
 | `FRONTEND_URL` | `https://sandybrown-jellyfish-697903.hostingersite.com` |
-| `DATABASE_URL` | ver seção SQLite abaixo |
+| `DATABASE_URL` | string de conexão PostgreSQL (ex.: Supabase) — ver abaixo |
 
 Gerar segredos: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
 
-## ⚠️ SQLite e persistência de dados
+## 🗄️ Banco de dados (PostgreSQL — Supabase)
 
-O banco padrão é `backend/prisma/dev.db`, criado dentro da pasta do app. Em
-plataformas que substituem os arquivos a cada deploy, esse dado pode ser
-perdido. Para produção:
+O schema usa PostgreSQL (`provider = "postgresql"`) e lê `DATABASE_URL`.
+Com o Supabase conectado pelo hPanel, a variável é criada automaticamente.
 
-1. Descubra um caminho persistente da sua conta (ex: `/home/uXXXX/`) e defina:
-   `DATABASE_URL="file:/home/uXXXX/financeapp-data/prod.db"`
-   (o Prisma usa essa env no lugar do schema automaticamente)
-2. Faça o primeiro deploy, depois copie o db atual para lá se já tiver dados.
-3. Baixe backup periodicamente pelo Gerenciador de Arquivos.
+Formato esperado (pooler do Supabase, funciona em qualquer rede):
+
+```
+postgresql://postgres.<ref>:SENHA@aws-0-<regiao>.pooler.supabase.com:5432/postgres
+```
+
+Notas:
+
+- O schema do banco é aplicado automaticamente no deploy (`prisma db push`,
+  melhor-esforço: se falhar, o app sobe mesmo assim e avisa nos logs).
+- Dados do SQLite antigo NÃO migram sozinhos — usuários precisam se cadastrar
+  de novo (ou migrar dados manualmente).
+- Para dev local, coloque a mesma URL no `backend/.env`.
 
 ---
 
