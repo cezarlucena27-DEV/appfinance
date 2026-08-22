@@ -5,8 +5,7 @@ a própria Hostinger clona, compila e reinicia a aplicação Node automaticament
 Um único processo NestJS serve a API (`/api/*`) e o frontend React.
 
 ```
-git push origin main  ──>  Hostinger detecta  ──>  npm install → build → start
-                                                   (package.json da raiz orquestra tudo)
+git push origin main  ──>  Hostinger detecta  ──>  install → build → start
 ```
 
 ---
@@ -17,8 +16,8 @@ git push origin main  ──>  Hostinger detecta  ──>  npm install → build
 | --- | --- |
 | Repositório | cezarlucena27-DEV/appfinance |
 | Filial | main |
-| Diretório raiz | **(vazio / raiz do repo)** — NÃO usar `backend` |
-| Framework | Padrão (usa os scripts do `package.json` da raiz) |
+| Diretório raiz | `backend` ou vazio — **ambos funcionam** (o frontend já vai compilado e versionado em `backend/public`) |
+| Framework | NestJS (detectado) ou Padrão |
 | Versão do Node | 20.x ou 22.x |
 
 Se o painel permitir editar comandos manualmente:
@@ -26,6 +25,11 @@ Se o painel permitir editar comandos manualmente:
 - Install: `npm install`
 - Build: `npm run build`
 - Start: `npm run start`
+
+> Arquitetura: um único processo NestJS serve a API (`/api/*`) e o frontend
+> React. O Vite compila o frontend para `backend/public` (commitado no Git),
+> então o servidor não precisa instalar dependências do frontend nem rodar o
+> build do Vite. O `build` também aplica o schema do banco (`prisma db push`).
 
 ## Variáveis de ambiente (painel → variáveis de ambiente do app)
 
@@ -64,7 +68,8 @@ Passo a passo completo na versão anterior deste arquivo ou sob demanda.
 
 | Sintoma | Solução |
 | --- | --- |
-| `Cannot GET /` | Frontend não compilado/achado — veja logs; garanta raiz = raiz do repo e commit recente |
-| Falha no build (memória) | Reduza para build só do backend + commite `frontend/dist` pronto |
+| `Cannot GET /` ou 404 na home | Confira se o commit mais recente foi implantado (força "Redeploy"); veja logs de implantação |
+| "Internal server error" ao abrir o site | Normal durante o redeploy; aguarde ~1 min e recarregue com Ctrl+F5 |
+| Falha no build (memória) | O build atual é leve (só backend + Prisma); verifique se não há comando customizado rodando Vite no servidor |
 | Erro de banco no start | Confira `DATABASE_URL`; rode `npm run prisma:push --prefix backend` |
 | App não reiniciou | Force "Redeploy" no hPanel e confira os logs de implantação |
