@@ -30,8 +30,8 @@ import api from '../lib/api';
 
 const PLANS = [
   { id: 'free', name: 'Gratuito', price: 0, features: ['Ate 50 transacoes/mes', 'Ate 1 conta', '1 cartao', 'Categorias padrao do sistema', 'Relatorios basicos', '1 usuario'] },
-  { id: 'premium', name: 'Premium', price: 14.90, features: ['Transacoes ilimitadas (parceladas e recorrentes)', 'Ate 3 contas', 'Cartoes com fatura automatica', 'Orcamentos e metas ilimitados', 'Relatorios completos (fluxo de caixa, categorias, patrimonio)', 'Exportacao PDF/Excel', 'Backup manual', 'Ate 3 usuarios'] },
-  { id: 'pro', name: 'Pro', price: 29.90, features: ['Tudo do Premium', 'Contas, cartoes e usuarios ilimitados', 'Backup automatico diario', 'Gestao familiar compartilhada'] },
+  { id: 'premium', name: 'Premium', price: 29.90, features: ['Transacoes ilimitadas (parceladas e recorrentes)', 'Ate 3 contas', 'Cartoes com fatura automatica', 'Orcamentos e metas ilimitados', 'Relatorios completos (fluxo de caixa, categorias, patrimonio)', 'Exportacao PDF/Excel', 'Backup manual', 'Ate 3 usuarios'] },
+  { id: 'pro', name: 'Pro', price: 49.90, features: ['Tudo do Premium', 'Contas, cartoes e usuarios ilimitados', 'Backup automatico diario', 'Gestao familiar compartilhada'] },
 ];
 
 export function MasterDashboard() {

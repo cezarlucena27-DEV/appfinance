@@ -445,7 +445,7 @@ function HelpTab() {
                   <li><strong>Relatorios:</strong> Fluxo de caixa, por categoria, patrimonio (Premium+)</li>
                   <li><strong>Categorias:</strong> Padrao do sistema + personalizadas</li>
                   <li><strong>Backup:</strong> Manual (Premium) / Automatico diario (PRO)</li>
-                  <li><strong>Planos:</strong> Free (50 trans/mes), Premium (R$ 14,90), PRO (R$ 29,90)</li>
+                  <li><strong>Planos:</strong> Free (50 trans/mes), Premium (R$ 29,90), PRO (R$ 49,90)</li>
                 </ul>
                 <p className="mt-4 text-sm text-gray-500">Documento completo: MANUAL_USUARIO.md</p>
               </>

@@ -40,12 +40,12 @@ async function main() {
   await prisma.plan.upsert({
     where: { name: 'Plano Premium' },
     update: {},
-    create: { id: 'premium', name: 'Plano Premium', price: 14.9, description: 'Contas e transacoes ilimitadas, relatorios PDF, insights, ate 3 usuarios, suporte prioritario' },
+    create: { id: 'premium', name: 'Plano Premium', price: 29.9, description: 'Contas e transacoes ilimitadas, relatorios PDF, insights, ate 3 usuarios, suporte prioritario' },
   });
   await prisma.plan.upsert({
     where: { name: 'Plano Pro' },
     update: {},
-    create: { id: 'pro', name: 'Plano Pro', price: 29.9, description: 'Tudo do Premium, usuarios ilimitados, backup automatico, API access, suporte 24/7' },
+    create: { id: 'pro', name: 'Plano Pro', price: 49.9, description: 'Tudo do Premium, usuarios ilimitados, backup automatico, API access, suporte 24/7' },
   });
   console.log('Planos garantidos no banco (free, premium, pro).');
 
@@ -65,7 +65,7 @@ async function main() {
           workspaceId: membership?.workspaceId || '',
           planId: demo.plan,
           status: 'active',
-          value: demo.plan === 'premium' ? 14.9 : demo.plan === 'pro' ? 29.9 : 0,
+          value: demo.plan === 'premium' ? 29.9 : demo.plan === 'pro' ? 49.9 : 0,
           nextDueDate,
         },
       });
@@ -112,7 +112,7 @@ async function main() {
         workspaceId: workspace.id,
         planId: demo.plan,
         status: 'active',
-        value: demo.plan === 'premium' ? 14.9 : demo.plan === 'pro' ? 29.9 : 0,
+        value: demo.plan === 'premium' ? 29.9 : demo.plan === 'pro' ? 49.9 : 0,
         nextDueDate,
       },
     });

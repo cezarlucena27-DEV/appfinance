@@ -159,7 +159,7 @@ export class SubscriptionsService {
       {
         id: 'premium',
         name: 'Plano Premium',
-        price: 14.90,
+        price: 29.90,
         features: [
           'Transacoes ilimitadas (inclusive parceladas e recorrentes)',
           'Ate 3 contas (carteira, corrente, poupanca, investimento)',
@@ -172,7 +172,7 @@ export class SubscriptionsService {
       {
         id: 'pro',
         name: 'Plano Pro',
-        price: 29.90,
+        price: 49.90,
         features: [
           'Tudo do Premium',
           'Contas, cartoes e usuarios ilimitados',
@@ -208,7 +208,7 @@ export class SubscriptionsService {
     });
 
     const planRecord = await this.prisma.plan.findUnique({ where: { id: plan } });
-    const value = planRecord?.price ?? (plan === 'premium' ? 14.9 : plan === 'pro' ? 29.9 : 0);
+    const value = planRecord?.price ?? (plan === 'premium' ? 29.9 : plan === 'pro' ? 49.9 : 0);
 
     const existing = await this.prisma.subscription.findUnique({ where: { userId } });
     if (existing) {
