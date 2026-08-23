@@ -142,32 +142,51 @@ export function Onboarding() {
           {step === 2 && (
             <div className="space-y-6">
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Genero</h2>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">Selecione seu genero</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Sobre voce</h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">Selecione o seu genero para continuar</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => setGender('masculino')}
-                  className={`p-8 rounded-xl border-2 text-center transition-all ${
-                    gender === 'masculino'
-                      ? 'border-primary bg-primary/5'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
-                  <span className="text-4xl block mb-3">Homem</span>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">Homem</p>
-                </button>
-                <button
-                  onClick={() => setGender('feminino')}
-                  className={`p-8 rounded-xl border-2 text-center transition-all ${
-                    gender === 'feminino'
-                      ? 'border-primary bg-primary/5'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
-                  <span className="text-4xl block mb-3">Mulher</span>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">Mulher</p>
-                </button>
+                {[
+                  {
+                    value: 'masculino',
+                    label: 'Masculino',
+                    symbol: '\u2642',
+                    grad: 'from-blue-500/20 to-blue-500/5',
+                    accent: 'text-blue-600 dark:text-blue-400',
+                  },
+                  {
+                    value: 'feminino',
+                    label: 'Feminino',
+                    symbol: '\u2640',
+                    grad: 'from-pink-500/20 to-pink-500/5',
+                    accent: 'text-pink-600 dark:text-pink-400',
+                  },
+                ].map((g) => {
+                  const selected = gender === g.value;
+                  return (
+                    <button
+                      key={g.value}
+                      onClick={() => setGender(g.value)}
+                      className={`relative p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all ${
+                        selected
+                          ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
+                      }`}
+                    >
+                      {selected && (
+                        <span className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center shadow">
+                          <Check size={14} strokeWidth={3} />
+                        </span>
+                      )}
+                      <span
+                        className={`w-20 h-20 rounded-full bg-gradient-to-br ${g.grad} flex items-center justify-center text-5xl leading-none ${g.accent}`}
+                      >
+                        {g.symbol}
+                      </span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{g.label}</span>
+                    </button>
+                  );
+                })}
               </div>
               <div className="flex gap-3">
                 <button
