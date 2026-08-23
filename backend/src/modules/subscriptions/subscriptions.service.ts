@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -8,7 +8,19 @@ export class SubscriptionsService {
   constructor(private prisma: PrismaService) {}
 
   private getPixConfigPath() {
-    return join(process.cwd(), 'asaas-config.json');
+    const candidates = [
+      join(process.cwd(), 'asaas-config.json'),
+      join(process.cwd(), 'backend', 'asaas-config.json'),
+      join(__dirname, '..', '..', '..', 'asaas-config.json'),
+    ];
+    for (const p of candidates) {
+      try {
+        if (existsSync(p)) return p;
+      } catch {
+        // next candidate
+      }
+    }
+    return candidates[0];
   }
 
   private getPixKey(): string {
