@@ -77,7 +77,7 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [helpTab, setHelpTab] = useState<HelpTab>('comprovante');
+  const [helpTab, setHelpTab] = useState<HelpTab>('guias');
   const [paymentInfo, setPaymentInfo] = useState<{ pixKey: string; financeEmail: string }>({ pixKey: '', financeEmail: '' });
   const [copied, setCopied] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -225,27 +225,33 @@ export function Login() {
       {helpOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setHelpOpen(false)}>
           <div
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col"
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-2xl max-h-[88vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Central de Ajuda</h3>
-              <button onClick={() => setHelpOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <div className="flex items-center gap-3 p-5 border-b border-gray-200 dark:border-gray-700">
+              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <FileText size={22} className="text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Central de Ajuda</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Estamos aqui para ajudar</p>
+              </div>
+              <button onClick={() => setHelpOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
+            <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
               {([
-                { id: 'comprovante', label: 'Comprovante', icon: FileText },
-                { id: 'guias', label: 'Guias e Manuais', icon: BookOpen },
+                { id: 'guias', label: 'Guias', icon: BookOpen },
                 { id: 'faq', label: 'FAQ', icon: HelpCircle },
                 { id: 'politicas', label: 'Políticas', icon: ShieldCheck },
+                { id: 'comprovante', label: 'Comprovante', icon: FileText },
               ] as const).map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setHelpTab(id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  className={`shrink-0 px-5 flex items-center justify-center gap-1.5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
                     helpTab === id
                       ? 'border-primary text-primary'
                       : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -257,16 +263,30 @@ export function Login() {
               ))}
             </div>
 
-            <div className="p-4 overflow-y-auto text-sm text-gray-700 dark:text-gray-300">
+            <div className="p-5 overflow-y-auto text-base text-gray-700 dark:text-gray-300">
               {helpTab === 'comprovante' && (
-                <div className="space-y-4">
-                  <p>Se o seu acesso estiver bloqueado por falta de pagamento ou se o financeiro nao identificou o seu pagamento, envie o comprovante para confirmacao:</p>
-                  <ol className="list-decimal list-inside space-y-1.5 ml-1">
-                    <li>Faca o pagamento via PIX usando a chave abaixo</li>
-                    <li>Tire um print ou salve o comprovante do banco</li>
-                    <li>Envie o comprovante por e-mail <strong>informando o e-mail do seu cadastro no sistema</strong></li>
-                    <li>O acesso sera liberado apos a confirmacao pelo financeiro</li>
-                  </ol>
+                <div className="space-y-5">
+                  <div className="text-center">
+                    <h4 className="text-xl font-bold text-gray-900 dark:text-gray-100">Liberar meu acesso</h4>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                      Se o seu acesso estiver temporariamente bloqueado, envie o comprovante de pagamento para nossa equipe analisar.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      'Realize o pagamento via PIX usando a chave abaixo',
+                      'Envie o comprovante para a equipe financeira',
+                      'Aguarde a confirmacao - o acesso sera liberado em seguida',
+                    ].map((step, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center shrink-0">
+                          {i + 1}
+                        </span>
+                        <span className="pt-1">{step}</span>
+                      </div>
+                    ))}
+                  </div>
 
                   {paymentInfo.pixKey && (
                     <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
@@ -284,16 +304,18 @@ export function Login() {
                     </div>
                   )}
 
-                  <a
-                    href={mailtoHref}
-                    className="w-full btn-primary flex items-center justify-center gap-2 no-underline"
-                  >
-                    <Mail size={16} />
-                    Enviar comprovante por e-mail
-                  </a>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                    E-mail do financeiro: {paymentInfo.financeEmail}
-                  </p>
+                  <div>
+                    <a
+                      href={mailtoHref}
+                      className="w-full btn-primary flex items-center justify-center gap-2 no-underline"
+                    >
+                      <Mail size={16} />
+                      Enviar comprovante
+                    </a>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                      O comprovante sera enviado para a equipe financeira
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -342,10 +364,10 @@ export function Login() {
                   <div>
                     <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1.5">Informacoes e suporte</h4>
                     <ul className="space-y-1 ml-1 list-disc list-inside">
-                      <li>Financeiro/pagamentos: {paymentInfo.financeEmail || 'cezar.lucena27@gmail.com'}</li>
+                      <li>Financeiro/pagamentos: use a aba Comprovante da Central de Ajuda</li>
                       <li>Atendimento em horario comercial: seg-sex, 9h as 18h</li>
                       <li>Pagamentos processados pelo Asaas — seus dados de cartao nunca passam pelos nossos servidores</li>
-                      <li>Duvidas rapidas: veja a aba FAQ ou os Guias e Manuais</li>
+                      <li>Duvidas rapidas: veja a aba FAQ ou os Guias</li>
                     </ul>
                   </div>
                 </div>
@@ -369,6 +391,16 @@ export function Login() {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 text-center">
+              <Link
+                to="/forgot-password"
+                onClick={() => setHelpOpen(false)}
+                className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+              >
+                Nao consegue acessar? Recuperar conta
+              </Link>
             </div>
           </div>
         </div>
