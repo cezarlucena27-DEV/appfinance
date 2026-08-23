@@ -29,9 +29,9 @@ import { ReorderablePanels } from '../components/ReorderablePanels';
 import api from '../lib/api';
 
 const PLANS = [
-  { id: 'free', name: 'Gratuito', price: 0, features: ['Ate 1 conta', 'Ate 20 transacoes/mes', '1 cartao', '1 orcamento', '1 meta', 'Relatorios basicos', '1 usuario'] },
-  { id: 'premium', name: 'Premium', price: 19.90, features: ['Dashboard completo', 'Ate 3 contas', 'Transacoes ilimitadas', 'Categorias personalizadas', 'Cartoes ilimitados', 'Orcamentos ilimitados', 'Metas ilimitadas', 'Relatorios completos', 'Relatorios em PDF', 'Insights automaticos', '2 usuarios', 'Gestao compartilhada para casal', 'Configuracoes avancadas', 'Suporte prioritario'] },
-  { id: 'pro', name: 'Pro', price: 39.90, features: ['Tudo do Premium', 'Usuarios da familia', 'Gestao familiar', 'Backup automatico', 'Acesso a API', 'Relatorios completos + PDF', 'Insights automaticos', 'Contas ilimitadas', 'Transacoes ilimitadas', 'Cartoes ilimitados', 'Orcamentos ilimitados', 'Metas ilimitadas', 'Configuracoes avancadas', 'Suporte prioritario'] },
+  { id: 'free', name: 'Gratuito', price: 0, features: ['Ate 50 transacoes/mes', 'Ate 1 conta', '1 cartao', 'Categorias padrao do sistema', 'Relatorios basicos', '1 usuario'] },
+  { id: 'premium', name: 'Premium', price: 14.90, features: ['Transacoes ilimitadas (parceladas e recorrentes)', 'Ate 3 contas', 'Cartoes com fatura automatica', 'Orcamentos e metas ilimitados', 'Relatorios completos (fluxo de caixa, categorias, patrimonio)', 'Exportacao PDF/Excel', 'Backup manual', 'Ate 3 usuarios'] },
+  { id: 'pro', name: 'Pro', price: 29.90, features: ['Tudo do Premium', 'Contas, cartoes e usuarios ilimitados', 'Backup automatico diario', 'Gestao familiar compartilhada'] },
 ];
 
 export function MasterDashboard() {

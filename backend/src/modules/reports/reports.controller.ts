@@ -1,6 +1,7 @@
 import { Controller, Get, Query, UseGuards, Request, Res } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PaidPlanGuard } from '../../common/guards/paid-plan.guard';
 import { Response } from 'express';
 
 @UseGuards(JwtAuthGuard)
@@ -23,6 +24,7 @@ export class ReportsController {
     return this.reportsService.getYearly(req.user.id, parseInt(year));
   }
 
+  @UseGuards(PaidPlanGuard)
   @Get('export/csv')
   async exportCSV(
     @Query('month') month: string,
@@ -37,6 +39,7 @@ export class ReportsController {
     res.send(csv);
   }
 
+  @UseGuards(PaidPlanGuard)
   @Get('export/pdf')
   async exportPDF(
     @Query('month') month: string,
@@ -51,6 +54,7 @@ export class ReportsController {
     res.send(buffer);
   }
 
+  @UseGuards(PaidPlanGuard)
   @Get('export/excel')
   async exportExcel(
     @Query('month') month: string,

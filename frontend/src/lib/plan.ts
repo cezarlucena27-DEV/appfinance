@@ -1,6 +1,6 @@
 export const FREE_PLAN_LIMITS = {
   accounts: 1,
-  transactionsPerMonth: 20,
+  transactionsPerMonth: 50,
   cards: 1,
   budgets: 1,
   goals: 1,
@@ -13,7 +13,7 @@ export const PREMIUM_PLAN_LIMITS = {
   cards: Infinity,
   budgets: Infinity,
   goals: Infinity,
-  users: 2,
+  users: 3,
 };
 
 export const PRO_PLAN_LIMITS = {

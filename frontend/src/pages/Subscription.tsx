@@ -5,47 +5,34 @@ import { QRCodeCanvas } from 'qrcode.react';
 import api from '../lib/api';
 
 const FREE_PLAN_FEATURES = [
+  'Ate 50 transacoes/mes',
   'Ate 1 conta',
-  'Ate 20 transacoes/mes',
+  'Categorias padrao do sistema',
   '1 cartao',
-  '1 orcamento',
-  '1 meta',
+  'Orcamentos com alertas 80%/100%',
+  'Metas de economia',
   'Relatorios basicos',
   '1 usuario',
 ];
 
 const PREMIUM_PLAN_FEATURES = [
-  'Dashboard completo',
+  'Transacoes ilimitadas (parceladas e recorrentes)',
   'Ate 3 contas',
-  'Transacoes ilimitadas',
-  'Categorias personalizadas',
-  'Cartoes ilimitados',
-  'Orcamentos ilimitados',
-  'Metas ilimitadas',
-  'Relatorios completos',
-  'Relatorios em PDF',
-  'Insights automaticos',
-  '2 usuarios',
-  'Gestao compartilhada para casal',
-  'Configuracoes avancadas',
+  'Cartoes de credito com fatura automatica',
+  'Orcamentos ilimitados com alertas',
+  'Metas ilimitadas com progresso automatico',
+  'Relatorios completos: fluxo de caixa, categorias e patrimonio',
+  'Exportacao em PDF/Excel',
+  'Backup manual',
+  'Ate 3 usuarios',
   'Suporte prioritario',
 ];
 
 const PRO_PLAN_FEATURES = [
   'Tudo do Premium',
-  'Usuarios da familia',
-  'Gestao familiar',
-  'Backup automatico',
-  'Acesso a API',
-  'Relatorios completos + PDF',
-  'Insights automaticos',
-  'Contas ilimitadas',
-  'Transacoes ilimitadas',
-  'Cartoes ilimitados',
-  'Orcamentos ilimitados',
-  'Metas ilimitadas',
-  'Configuracoes avancadas',
-  'Suporte prioritario',
+  'Contas, cartoes e usuarios ilimitados',
+  'Backup automatico diario',
+  'Gestao familiar compartilhada',
 ];
 
 export function Subscription() {

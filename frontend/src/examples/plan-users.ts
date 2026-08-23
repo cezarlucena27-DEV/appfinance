@@ -189,7 +189,7 @@ export const LIMIT_SCENARIOS = {
     limit: 3,
     result: 'BLOCKED',
     error: 'Plano gratuito permite até 3 contas. Faça upgrade para remover limites.',
-    upgradeSuggestion: 'Premium - Contas ilimitadas por R$ 19,90/mês',
+    upgradeSuggestion: 'Premium - Contas ilimitadas por R$ 14,90/mês',
   },
   
   premiumUserTriesToInvite3rdUser: {
@@ -199,7 +199,7 @@ export const LIMIT_SCENARIOS = {
     limit: 2,
     result: 'BLOCKED',
     error: 'Plano Premium permite até 2 usuários. Faça upgrade para remover limites.',
-    upgradeSuggestion: 'Pro - Usuários da família ilimitados por R$ 39,90/mês',
+    upgradeSuggestion: 'Pro - Usuários da família ilimitados por R$ 29,90/mês',
   },
   
   proUserInvitesAccountant: {
@@ -226,7 +226,7 @@ export const PLAN_COMPARISON = {
     color: 'gray',
     limits: {
       accounts: 3,
-      transactions: 20,
+      transactions: 50,
       cards: 1,
       budgets: 1,
       goals: 1,
@@ -254,8 +254,8 @@ export const PLAN_COMPARISON = {
   
   premium: {
     name: 'Premium',
-    price: 19.90,
-    monthlyPrice: 'R$ 19,90',
+    price: 14.90,
+    monthlyPrice: 'R$ 14,90',
     color: 'yellow',
     badge: 'Mais popular',
     limits: {
@@ -292,8 +292,8 @@ export const PLAN_COMPARISON = {
   
   pro: {
     name: 'Pro',
-    price: 39.90,
-    monthlyPrice: 'R$ 39,90',
+    price: 29.90,
+    monthlyPrice: 'R$ 29,90',
     color: 'purple',
     badge: 'Para famílias',
     limits: {

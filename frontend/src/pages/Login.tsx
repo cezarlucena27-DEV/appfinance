@@ -9,7 +9,7 @@ type HelpTab = 'comprovante' | 'guias' | 'faq' | 'politicas';
 const FAQ_ITEMS = [
   {
     q: 'O FinanceApp e gratuito?',
-    a: 'Sim! O plano Free e gratis para sempre. Os planos Premium (R$ 19,90/mes) e PRO (R$ 39,90/mes) liberam mais contas, usuarios e recursos avancados.',
+    a: 'Sim! O plano Free e gratis para sempre (ate 50 transacoes/mes). Os planos Premium (R$ 14,90/mes) e PRO (R$ 29,90/mes) liberam mais contas, usuarios e recursos avancados.',
   },
   {
     q: 'Esqueci minha senha. E agora?',

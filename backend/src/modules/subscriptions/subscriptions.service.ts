@@ -148,19 +148,37 @@ export class SubscriptionsService {
         id: 'free',
         name: 'Plano Gratuito',
         price: 0,
-        features: ['Ate 1 conta', 'Ate 20 transacoes/mes', 'Categorias basicas', '1 usuario'],
+        features: [
+          'Ate 50 transacoes/mes',
+          'Ate 1 conta',
+          'Categorias padrao do sistema',
+          'Orcamentos com alertas 80%/100%',
+          'Metas de economia',
+        ],
       },
       {
         id: 'premium',
         name: 'Plano Premium',
-        price: 19.90,
-        features: ['Ate 3 contas', 'Transacoes ilimitadas', 'Relatorios PDF', 'Insights automaticos', 'Ate 3 usuarios', 'Suporte prioritario'],
+        price: 14.90,
+        features: [
+          'Transacoes ilimitadas (inclusive parceladas e recorrentes)',
+          'Ate 3 contas (carteira, corrente, poupanca, investimento)',
+          'Cartoes de credito com fatura automatica',
+          'Relatorios: fluxo de caixa, por categoria e patrimonio',
+          'Backup manual',
+          'Ate 3 usuarios',
+        ],
       },
       {
         id: 'pro',
         name: 'Plano Pro',
-        price: 49.90,
-        features: ['Tudo do Premium', 'Usuarios ilimitados', 'Backup automatico', 'API access', 'Suporte 24/7'],
+        price: 29.90,
+        features: [
+          'Tudo do Premium',
+          'Contas, cartoes e usuarios ilimitados',
+          'Backup automatico diario',
+          'Suporte prioritario',
+        ],
       },
     ];
   }
@@ -190,7 +208,7 @@ export class SubscriptionsService {
     });
 
     const planRecord = await this.prisma.plan.findUnique({ where: { id: plan } });
-    const value = planRecord?.price ?? (plan === 'premium' ? 19.9 : plan === 'pro' ? 49.9 : 0);
+    const value = planRecord?.price ?? (plan === 'premium' ? 14.9 : plan === 'pro' ? 29.9 : 0);
 
     const existing = await this.prisma.subscription.findUnique({ where: { userId } });
     if (existing) {
