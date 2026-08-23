@@ -1,16 +1,11 @@
 import { Controller, Post, Body, UseGuards, Get, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, SendVerificationDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
-
-  @Post('verify-email/send')
-  async sendVerificationCode(@Body() dto: SendVerificationDto) {
-    return this.authService.sendVerificationCode(dto.email);
-  }
 
   @Post('register')
   async register(@Body() dto: RegisterDto) {
