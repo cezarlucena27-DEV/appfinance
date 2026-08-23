@@ -28,7 +28,11 @@ export class PublicPaymentReceiptsController {
       }),
       limits: { fileSize: RECEIPTS_MAX_SIZE },
       fileFilter: (_req, file, cb) => {
-        const ok = RECEIPTS_ALLOWED_MIMES.includes(file.mimetype);
+        const ext = extname(file.originalname || '').toLowerCase();
+        const mimeOk = RECEIPTS_ALLOWED_MIMES.includes(file.mimetype);
+        // alguns navegadores enviam mimetype generico - valida pela extensao
+        const genericMime = ['application/octet-stream', ''].includes(file.mimetype);
+        const ok = mimeOk || (genericMime && ALLOWED_EXTENSIONS.includes(ext));
         if (!ok) {
           cb(new BadRequestException('Formato nao permitido. Envie JPG, PNG ou PDF'), false);
           return;

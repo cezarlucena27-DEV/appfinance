@@ -17,7 +17,7 @@ export class PaymentReceiptsService {
   constructor(private prisma: PrismaService) {}
 
   async create(file: Express.Multer.File | undefined, data: { senderName?: string; senderEmail?: string; note?: string }) {
-    if (!file) throw new BadRequestException('Arquivo nao enviado');
+    if (!file) throw new BadRequestException('O servidor nao recebeu o arquivo - tente novamente ou use outro navegador');
     if (file.size > RECEIPTS_MAX_SIZE) throw new BadRequestException('Arquivo maior que 5MB');
 
     return this.prisma.paymentReceipt.create({

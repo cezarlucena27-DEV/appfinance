@@ -166,11 +166,20 @@ export function Login() {
       fd.append('senderName', receiptForm.senderName);
       fd.append('senderEmail', receiptEmailValue);
       fd.append('note', receiptForm.note);
-      await api.post('/public/payment-receipts', fd);
+      // fetch nativo garante multipart com boundary correto (axios pode
+      // reutilizar o Content-Type application/json default da instancia)
+      const res = await fetch('/api/public/payment-receipts', { method: 'POST', body: fd });
+      if (!res.ok) {
+        let msg = '';
+        try {
+          const j = await res.json();
+          msg = Array.isArray(j.message) ? j.message[0] : j.message || '';
+        } catch {}
+        throw new Error(msg || 'Erro ao enviar comprovante. Tente novamente.');
+      }
       setReceiptSent(true);
     } catch (err: any) {
-      const msg = err?.response?.data?.message;
-      setReceiptError(Array.isArray(msg) ? msg[0] : msg || 'Erro ao enviar comprovante. Tente novamente.');
+      setReceiptError(err?.message || 'Erro ao enviar comprovante. Tente novamente.');
     } finally {
       setReceiptSending(false);
     }
