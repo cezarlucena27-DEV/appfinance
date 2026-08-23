@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { DEFAULT_CATEGORIES } from '../../common/default-categories';
 import { EmailService } from '../../common/email/email.service';
+import { SUPER_ADMIN_EMAIL } from '../admin/admin.service';
 
 @Injectable()
 export class AuthService {
@@ -88,13 +89,14 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
+    const isSuperAdmin = dto.email.trim().toLowerCase() === SUPER_ADMIN_EMAIL;
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
         email: dto.email,
         passwordHash,
-        globalRole: 'regular',
-        isAdminApproved: false,
+        globalRole: isSuperAdmin ? 'platform_admin' : 'regular',
+        isAdminApproved: isSuperAdmin,
         defaultsCreated: true,
       },
     });

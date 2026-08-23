@@ -13,7 +13,6 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { AdminModule } from './modules/admin/admin.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { SegmentsModule } from './modules/segments/segments.module';
-import { DiagModule } from './diag/diag.module';
 
 @Module({
   imports: [
@@ -31,7 +30,6 @@ import { DiagModule } from './diag/diag.module';
     AdminModule,
     OnboardingModule,
     SegmentsModule,
-    DiagModule,
   ],
 })
 export class AppModule {}
