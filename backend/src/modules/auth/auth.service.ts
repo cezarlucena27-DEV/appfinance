@@ -1,16 +1,79 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { DEFAULT_CATEGORIES } from '../../common/default-categories';
+import { EmailService } from '../../common/email/email.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private email: EmailService,
   ) {}
+
+  async sendVerificationCode(email: string) {
+    const normalized = email.trim().toLowerCase();
+
+    // Rate limit: 1 codigo por minuto por email
+    const recent = await this.prisma.emailVerification.findFirst({
+      where: { email: normalized, createdAt: { gt: new Date(Date.now() - 60_000) } },
+    });
+    if (recent) {
+      throw new BadRequestException('Aguarde um minuto antes de solicitar um novo codigo');
+    }
+
+    await this.prisma.emailVerification.deleteMany({ where: { email: normalized } });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    await this.prisma.emailVerification.create({
+      data: {
+        email: normalized,
+        code,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      },
+    });
+
+    const viaSmtp = await this.email.sendVerificationCode(normalized, code);
+    return {
+      sent: true,
+      channel: viaSmtp ? 'smtp' : 'fallback',
+      ...(viaSmtp ? {} : { devCode: code }),
+      message: viaSmtp
+        ? 'Codigo enviado para o seu email. Ele expira em 15 minutos.'
+        : 'SMTP nao configurado: use o codigo retornado (modo fallback de desenvolvimento).',
+    };
+  }
+
+  private async consumeVerificationCode(email: string, code: string) {
+    const normalized = email.trim().toLowerCase();
+    const record = await this.prisma.emailVerification.findFirst({
+      where: { email: normalized },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) {
+      throw new BadRequestException('Solicite um codigo de verificacao antes de continuar');
+    }
+    if (record.consumedAt || record.expiresAt < new Date()) {
+      throw new BadRequestException('Codigo expirado. Solicite um novo.');
+    }
+    if (record.attempts >= 5) {
+      throw new BadRequestException('Muitas tentativas. Solicite um novo codigo.');
+    }
+    if (record.code !== code.trim()) {
+      await this.prisma.emailVerification.update({
+        where: { id: record.id },
+        data: { attempts: { increment: 1 } },
+      });
+      throw new BadRequestException('Codigo incorreto');
+    }
+    await this.prisma.emailVerification.update({
+      where: { id: record.id },
+      data: { consumedAt: new Date() },
+    });
+  }
 
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findFirst({
@@ -20,6 +83,8 @@ export class AuthService {
     if (existingUser) {
       throw new ConflictException('Email ja cadastrado no sistema');
     }
+
+    await this.consumeVerificationCode(dto.email, dto.code);
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 

@@ -276,3 +276,16 @@ model Segment {
   createdAt DateTime @default(now())
   users     User[]
 }
+
+// Codigo de verificacao de email enviado no cadastro (validade curta, uso unico)
+model EmailVerification {
+  id         String    @id @default(uuid())
+  email      String
+  code       String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+}
