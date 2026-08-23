@@ -28,7 +28,7 @@ export class AuthService {
         name: dto.name,
         email: dto.email,
         passwordHash,
-        globalRole: dto.wantsAdmin ? 'platform_admin' : 'regular',
+        globalRole: 'regular',
         isAdminApproved: false,
         defaultsCreated: true,
       },
@@ -53,10 +53,6 @@ export class AuthService {
     await this.prisma.category.createMany({
       data: DEFAULT_CATEGORIES.map(cat => ({ ...cat, userId: user.id })),
     });
-
-    if (dto.wantsAdmin) {
-      return { message: 'Conta criada. Aguarde a aprovacao do administrador.', pending: true };
-    }
 
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { userId: user.id, workspaceId: workspace.id },

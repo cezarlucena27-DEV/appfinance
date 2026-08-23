@@ -24,7 +24,7 @@ interface AppState {
   helpTicketsLoading: boolean;
   
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, wantsAdmin?: boolean) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   fetchProfile: () => Promise<void>;
   toggleModule: (moduleId: string) => void;
@@ -111,13 +111,11 @@ export const useStore = create<AppState>((set, get) => ({
     set({ user: data.user });
   },
 
-  register: async (name, email, password, wantsAdmin = false) => {
-    const { data } = await api.post('/auth/register', { name, email, password, wantsAdmin });
-    if (!wantsAdmin) {
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      set({ user: data.user });
-    }
+  register: async (name, email, password) => {
+    const { data } = await api.post('/auth/register', { name, email, password });
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    set({ user: data.user });
   },
 
   logout: () => {

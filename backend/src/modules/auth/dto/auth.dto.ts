@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -15,10 +15,6 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   workspaceName?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  wantsAdmin?: boolean;
 }
 
 export class LoginDto {
