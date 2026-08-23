@@ -24,6 +24,13 @@ export class SubscriptionsService {
   }
 
   private getPixKey(): string {
+    // 1) variavel de ambiente (producao - arquivo fica fora do git por seguranca)
+    const envKey = (process.env.PIX_KEY || '').trim();
+    if (envKey) {
+      if (/^\d{10,11}$/.test(envKey)) return '+55' + envKey;
+      return envKey;
+    }
+    // 2) arquivo local de configuracao
     try {
       const raw = readFileSync(this.getPixConfigPath(), 'utf-8');
       const key = (JSON.parse(raw).pixKey || '').trim();
