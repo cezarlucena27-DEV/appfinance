@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import api from '../lib/api';
-import { Wallet, Eye, EyeOff, AlertTriangle, X, HelpCircle, FileText, BookOpen, Copy, Check, Mail, ShieldCheck, Rocket, ArrowLeftRight, Target, BarChart3, LifeBuoy, ChevronDown, KeyRound } from 'lucide-react';
+import { Wallet, Eye, EyeOff, AlertTriangle, X, HelpCircle, FileText, BookOpen, Copy, Check, Mail, ShieldCheck, Rocket, ArrowLeftRight, Target, BarChart3, LifeBuoy, ChevronDown, KeyRound, Upload, Loader2, Paperclip, CheckCircle2, Send, User as UserIcon } from 'lucide-react';
 
 type HelpTab = 'guias' | 'faq' | 'politicas' | 'comprovante';
 
@@ -94,6 +94,11 @@ export function Login() {
   const [paymentInfo, setPaymentInfo] = useState<{ pixKey: string; financeEmail: string }>({ pixKey: '', financeEmail: '' });
   const [copied, setCopied] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [receiptForm, setReceiptForm] = useState({ senderName: '', senderEmail: '', note: '' });
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptSending, setReceiptSending] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
   const login = useStore((state) => state.login);
   const navigate = useNavigate();
 
@@ -115,12 +120,59 @@ export function Login() {
   }, [helpOpen, paymentInfo.pixKey]);
 
   const copyPixKey = async () => {
+    const text = paymentInfo.pixKey;
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(paymentInfo.pixKey);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // fallback para contextos nao seguros (http) onde navigator.clipboard nao existe
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // clipboard unavailable
+    }
+  };
+
+  const receiptEmailValue = receiptForm.senderEmail !== '' ? receiptForm.senderEmail : email;
+
+  const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setReceiptFile(file);
+    setReceiptError('');
+  };
+
+  const handleReceiptSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receiptFile) {
+      setReceiptError('Selecione o arquivo do comprovante (JPG, PNG ou PDF)');
+      return;
+    }
+    setReceiptError('');
+    setReceiptSending(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', receiptFile);
+      fd.append('senderName', receiptForm.senderName);
+      fd.append('senderEmail', receiptEmailValue);
+      fd.append('note', receiptForm.note);
+      await api.post('/public/payment-receipts', fd);
+      setReceiptSent(true);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message;
+      setReceiptError(Array.isArray(msg) ? msg[0] : msg || 'Erro ao enviar comprovante. Tente novamente.');
+    } finally {
+      setReceiptSending(false);
     }
   };
 
@@ -320,7 +372,7 @@ export function Login() {
                     <ol className="space-y-3 ml-[19px] border-l-2 border-gray-100 dark:border-gray-700">
                       {[
                         'Realize o pagamento via PIX usando a chave abaixo',
-                        'Envie o comprovante para a equipe financeira',
+                        'Envie o comprovante pelo formulario no fim desta aba',
                         'Aguarde a confirmacao - o acesso sera liberado em seguida',
                       ].map((step, i) => (
                         <li key={i} className="pl-4 relative">
@@ -333,46 +385,158 @@ export function Login() {
                     </ol>
                   </div>
 
-                  {paymentInfo.pixKey && (
-                    <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400 mb-0.5">Chave PIX</p>
-                        <p className="font-mono font-medium text-gray-900 dark:text-gray-100 truncate text-sm sm:text-base">{paymentInfo.pixKey}</p>
-                      </div>
-                      <button
-                        onClick={copyPixKey}
-                        className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          copied
-                            ? 'bg-green-600 text-white'
-                            : 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-700'
-                        }`}
-                      >
-                        {copied ? <Check size={15} /> : <Copy size={15} />}
-                        {copied ? 'Copiado!' : 'Copiar'}
-                      </button>
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400">Chave PIX</p>
+                      <span className="text-[11px] text-green-700/70 dark:text-green-400/70 font-medium">Copia e cola no app do banco</span>
                     </div>
-                  )}
+                    {paymentInfo.pixKey ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={copyPixKey}
+                          className="w-full text-left bg-white dark:bg-green-900/40 border border-green-300 dark:border-green-700 rounded-lg px-4 py-3 hover:border-green-500 transition-colors group"
+                          title="Clique para copiar"
+                        >
+                          <span className="block font-mono font-semibold text-gray-900 dark:text-gray-100 text-base sm:text-lg break-all select-all leading-snug">
+                            {paymentInfo.pixKey}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={copyPixKey}
+                          className={`mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm sm:text-base font-semibold transition-colors ${
+                            copied
+                              ? 'bg-green-600 text-white'
+                              : 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-700'
+                          }`}
+                        >
+                          {copied ? <Check size={17} /> : <Copy size={17} />}
+                          {copied ? 'Chave copiada!' : 'Copiar chave PIX'}
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
+                        A chave PIX sera exibida aqui assim que o administrador configurar o pagamento.
+                      </p>
+                    )}
+                  </div>
 
-                  {hasFinanceEmail ? (
-                    <div>
-                      <a href={mailtoHref} className="w-full btn-primary flex items-center justify-center gap-2 no-underline py-3">
-                        <Mail size={16} />
-                        Enviar comprovante
-                      </a>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                        O comprovante sera enviado para a equipe financeira
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-4 sm:p-5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-center">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-800 mx-auto flex items-center justify-center mb-2">
-                        <LifeBuoy size={20} className="text-blue-600 dark:text-blue-300" />
+                  <div className="bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-5">
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Upload size={19} className="text-primary" />
                       </div>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">Enviar comprovante</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
-                        Apos o pagamento, entre em contato com o <strong>administrador</strong> do sistema para enviar o comprovante e liberar seu acesso.
-                      </p>
+                      <h4 className="font-semibold text-base text-gray-900 dark:text-gray-100">Enviar comprovante</h4>
                     </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 ml-[52px] -mt-1">
+                      Anexe a foto ou PDF do comprovante do PIX. A equipe administradora visualiza direto no painel.
+                    </p>
+
+                    {receiptSent ? (
+                      <div className="text-center py-4">
+                        <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/40 mx-auto flex items-center justify-center mb-3">
+                          <CheckCircle2 size={26} className="text-green-600 dark:text-green-400" />
+                        </div>
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">Comprovante enviado com sucesso!</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
+                          A equipe financeira vai analisar e liberar seu acesso em breve.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => { setReceiptSent(false); setReceiptFile(null); setReceiptForm({ senderName: '', senderEmail: '', note: '' }); }}
+                          className="mt-4 text-sm text-primary font-medium hover:underline"
+                        >
+                          Enviar outro comprovante
+                        </button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleReceiptSubmit} className="space-y-3">
+                        <div>
+                          <label className="label">Seu nome</label>
+                          <input
+                            type="text"
+                            className="input"
+                            value={receiptForm.senderName}
+                            onChange={(e) => setReceiptForm({ ...receiptForm, senderName: e.target.value })}
+                            placeholder="Nome completo (opcional)"
+                          />
+                        </div>
+                        <div>
+                          <label className="label">E-mail do cadastro *</label>
+                          <div className="relative">
+                            <UserIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <input
+                              type="email"
+                              required
+                              className="input pl-9"
+                              value={receiptEmailValue}
+                              onChange={(e) => setReceiptForm({ ...receiptForm, senderEmail: e.target.value })}
+                              placeholder="E-mail usado no sistema"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="label">Comprovante * <span className="font-normal text-gray-400">(JPG, PNG ou PDF ate 5MB)</span></label>
+                          <label
+                            htmlFor="receipt-file-input"
+                            className={`flex items-center gap-3 px-4 py-3.5 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
+                              receiptFile
+                                ? 'border-green-400 dark:border-green-700 bg-green-50 dark:bg-green-900/20'
+                                : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/60 hover:border-primary/60'
+                            }`}
+                          >
+                            <Paperclip size={18} className={receiptFile ? 'text-green-600 dark:text-green-400 shrink-0' : 'text-gray-400 shrink-0'} />
+                            <span className={`text-sm truncate ${receiptFile ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                              {receiptFile ? receiptFile.name : 'Toque para escolher o arquivo'}
+                            </span>
+                          </label>
+                          <input
+                            id="receipt-file-input"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"
+                            className="hidden"
+                            onChange={handleReceiptFileChange}
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Observacao</label>
+                          <textarea
+                            rows={2}
+                            className="input resize-none"
+                            value={receiptForm.note}
+                            onChange={(e) => setReceiptForm({ ...receiptForm, note: e.target.value })}
+                            placeholder="Ex: paguei o plano Premium hoje as 14h (opcional)"
+                          />
+                        </div>
+
+                        {receiptError && (
+                          <div className="p-2.5 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-danger rounded-lg text-xs flex items-start gap-2">
+                            <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                            <span>{receiptError}</span>
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={receiptSending || !receiptEmailValue}
+                          className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {receiptSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                          {receiptSending ? 'Enviando...' : 'Enviar comprovante'}
+                        </button>
+                      </form>
+                    )}
+                  </div>
+
+                  {hasFinanceEmail && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                      Prefere por e-mail?{' '}
+                      <a href={mailtoHref} className="text-primary font-medium hover:underline inline-flex items-center gap-1">
+                        <Mail size={13} />
+                        Enviar para o financeiro
+                      </a>
+                    </p>
                   )}
                 </>
               )}

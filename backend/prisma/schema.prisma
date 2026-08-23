@@ -242,6 +242,21 @@ model PaymentHistory {
   createdAt   DateTime     @default(now())
 }
 
+model PaymentReceipt {
+  id           String    @id @default(uuid())
+  storedName   String
+  originalName String
+  mimeType     String
+  size         Int
+  senderName   String?
+  senderEmail  String?
+  note         String?
+  status       String    @default("pending") // pending, reviewed
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  createdAt    DateTime  @default(now())
+}
+
 model ReminderView {
   id           String   @id @default(uuid())
   userId       String

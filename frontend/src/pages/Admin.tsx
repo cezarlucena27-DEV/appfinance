@@ -6,7 +6,8 @@ import {
   Key, Trash2, ChevronLeft, ChevronRight, AlertTriangle,
   CheckCircle, XCircle, Edit2, Settings as SettingsIcon, Lock,
   Palette, Puzzle, LogOut, Save, UserPlus, Globe, BarChart3, PieChart as PieIcon,
-  FileSpreadsheet, MessageSquare, Mail, Check, X, Bell, Wifi
+  FileSpreadsheet, MessageSquare, Mail, Check, X, Bell, Wifi,
+  FileText, Image as ImageIcon, Download, Eye, Paperclip
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 import api from '../lib/api';
@@ -45,6 +46,20 @@ interface FinanceSubscription {
   accessUntil: string | null;
   paymentStatus: string;
   payments: { id: string; amount: number; status: string; dueDate: string; paidAt: string | null; notes: string | null; registeredBy: string | null; createdAt: string }[];
+}
+
+interface PaymentReceipt {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  senderName: string | null;
+  senderEmail: string | null;
+  note: string | null;
+  status: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  createdAt: string;
 }
 
 const SUPER_ADMIN_EMAIL = 'cezar.lucena27@gmail.com';
@@ -165,6 +180,10 @@ export function Admin() {
   const [unblockDate, setUnblockDate] = useState('');
   const [payTarget, setPayTarget] = useState<FinanceSubscription | null>(null);
   const [payForm, setPayForm] = useState({ amount: '', dueDate: '', notes: '' });
+  const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
+  const [previewReceipt, setPreviewReceipt] = useState<PaymentReceipt | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
 
@@ -353,14 +372,67 @@ export function Admin() {
   const loadFinanceSubs = async () => {
     setFinanceLoading(true);
     try {
-      const { data } = await api.get('/admin/subscriptions-finance');
-      setFinanceSubs(data);
-      const { data: views } = await api.get('/admin/reminder-views');
-      setReminderViews(views);
+      const [subsRes, viewsRes, receiptsRes] = await Promise.all([
+        api.get('/admin/subscriptions-finance'),
+        api.get('/admin/reminder-views'),
+        api.get('/admin/payment-receipts').catch(() => ({ data: [] })),
+      ]);
+      setFinanceSubs(subsRes.data);
+      setReminderViews(viewsRes.data);
+      setReceipts(receiptsRes.data);
     } catch {
       setFeedback({ type: 'error', msg: 'Erro ao carregar assinaturas' });
     } finally {
       setFinanceLoading(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handlePreviewReceipt = async (r: PaymentReceipt) => {
+    setPreviewReceipt(r);
+    setPreviewUrl('');
+    setPreviewLoading(true);
+    try {
+      const { data } = await api.get(`/admin/payment-receipts/${r.id}/file`, { responseType: 'blob' });
+      setPreviewUrl(URL.createObjectURL(data));
+    } catch {
+      showFeedback('error', 'Erro ao carregar comprovante');
+      setPreviewReceipt(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl('');
+    setPreviewReceipt(null);
+  };
+
+  const handleToggleReceiptReviewed = async (r: PaymentReceipt) => {
+    const next = r.status === 'reviewed' ? 'pending' : 'reviewed';
+    try {
+      await api.put(`/admin/payment-receipts/${r.id}/status`, { status: next });
+      setReceipts((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: next } : x)));
+      showFeedback('success', next === 'reviewed' ? 'Comprovante marcado como analisado' : 'Comprovante voltou para pendente');
+    } catch (err: any) {
+      showFeedback('error', err?.response?.data?.message || 'Erro ao atualizar comprovante');
+    }
+  };
+
+  const handleDeleteReceipt = async (r: PaymentReceipt) => {
+    if (!confirm('Excluir este comprovante definitivamente?')) return;
+    try {
+      await api.delete(`/admin/payment-receipts/${r.id}`);
+      setReceipts((prev) => prev.filter((x) => x.id !== r.id));
+      showFeedback('success', 'Comprovante excluido');
+    } catch (err: any) {
+      showFeedback('error', err?.response?.data?.message || 'Erro ao excluir comprovante');
     }
   };
 
@@ -1276,6 +1348,81 @@ export function Admin() {
           </button>
         </div>
 
+        {/* Comprovantes enviados pelos usuarios */}
+        <div className="card">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-1">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Paperclip size={16} className="text-primary" />
+                Comprovantes enviados
+                {receipts.filter((r) => r.status === 'pending').length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300">
+                    {receipts.filter((r) => r.status === 'pending').length} pendente(s)
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Enviados pelos usuarios na Central de Ajuda (tela de login, aba Comprovante)
+              </p>
+            </div>
+            <button onClick={loadFinanceSubs} disabled={financeLoading} className="btn-secondary text-sm px-3 py-1.5">
+              <RefreshCw size={14} className={financeLoading ? 'animate-spin' : ''} /> Atualizar
+            </button>
+          </div>
+          {receipts.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 py-4">Nenhum comprovante enviado ainda</p>
+          ) : (
+            <div className="space-y-2 mt-3 max-h-96 overflow-y-auto pr-1">
+              {receipts.map((r) => {
+                const matched = financeSubs.find((s) => s.user.email.toLowerCase() === (r.senderEmail || ''));
+                const isImage = r.mimeType.startsWith('image/');
+                const Icon = isImage ? ImageIcon : FileText;
+                return (
+                  <div key={r.id} className={`flex flex-wrap items-center gap-3 p-3 rounded-lg border text-sm ${r.status === 'pending' ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900' : 'bg-gray-50 dark:bg-gray-800 border-transparent'}`}>
+                    <div className="w-9 h-9 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0">
+                      <Icon size={17} className="text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {r.senderName || 'Sem nome'}
+                        {matched && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 align-middle">
+                            usuario: {matched.user.email}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {r.senderEmail || '-'} · {safeFormatDateTime(r.createdAt)}
+                      </p>
+                      {r.note && <p className="text-xs text-gray-500 dark:text-gray-400 italic truncate mt-0.5">"{r.note}"</p>}
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0 ${
+                      r.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+                        : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                    }`}>
+                      {r.status === 'pending' ? 'Pendente' : `Analisado${r.reviewedBy ? ` por ${r.reviewedBy}` : ''}`}
+                    </span>
+                    <div className="flex items-center gap-2 ml-auto shrink-0">
+                      <button onClick={() => handlePreviewReceipt(r)} className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1">
+                        <Eye size={13} /> Ver
+                      </button>
+                      {r.status === 'pending' && (
+                        <button onClick={() => handleToggleReceiptReviewed(r)} className="btn-primary text-xs px-2.5 py-1.5">
+                          Analisado
+                        </button>
+                      )}
+                      <button onClick={() => handleDeleteReceipt(r)} title="Excluir" className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {financeLoading && financeSubs.length === 0 ? (
           <div className="card text-center py-8 text-gray-500 dark:text-gray-400">Carregando...</div>
         ) : financeSubs.length === 0 ? (
@@ -1458,6 +1605,65 @@ export function Admin() {
                 <button onClick={() => setPayTarget(null)} className="btn-secondary flex-1" disabled={actionLoading === 'payment'}>Cancelar</button>
                 <button onClick={handleRegisterPayment} className="btn-primary flex-1 disabled:opacity-50" disabled={actionLoading === 'payment' || !payForm.dueDate}>
                   {actionLoading === 'payment' ? 'Registrando...' : 'Registrar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Receipt Preview Modal */}
+        {previewReceipt && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" onClick={closePreview}>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-3 p-5 border-b border-gray-200 dark:border-gray-700">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">{previewReceipt.originalName}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    {previewReceipt.senderName || 'Sem nome'} · {previewReceipt.senderEmail || '-'} · {formatFileSize(previewReceipt.size)} · {safeFormatDateTime(previewReceipt.createdAt)}
+                  </p>
+                  {previewReceipt.note && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 italic mt-1">"{previewReceipt.note}"</p>
+                  )}
+                </div>
+                <button onClick={closePreview} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 shrink-0">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-950 p-4 min-h-0">
+                {previewLoading ? (
+                  <p className="text-center py-12 text-gray-500 dark:text-gray-400">Carregando comprovante...</p>
+                ) : previewUrl ? (
+                  previewReceipt.mimeType.startsWith('image/') ? (
+                    <img src={previewUrl} alt={previewReceipt.originalName} className="max-w-full max-h-[60vh] mx-auto rounded-lg shadow" />
+                  ) : (
+                    <iframe src={previewUrl} title={previewReceipt.originalName} className="w-full h-[60vh] rounded-lg bg-white" />
+                  )
+                ) : (
+                  <p className="text-center py-12 text-gray-500 dark:text-gray-400">Nao foi possivel exibir o arquivo. Use o botao baixar abaixo.</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
+                <a
+                  href={previewUrl || '#'}
+                  download={previewReceipt.originalName}
+                  className={`btn-secondary text-sm px-3 py-2 flex items-center gap-2 ${!previewUrl ? 'pointer-events-none opacity-50' : ''}`}
+                >
+                  <Download size={15} /> Baixar
+                </a>
+                {previewReceipt.status === 'pending' && (
+                  <button
+                    onClick={() => { handleToggleReceiptReviewed(previewReceipt); setPreviewReceipt({ ...previewReceipt, status: 'reviewed' }); }}
+                    className="btn-primary text-sm px-3 py-2"
+                  >
+                    Marcar como analisado
+                  </button>
+                )}
+                <button
+                  onClick={() => { handleDeleteReceipt(previewReceipt); closePreview(); }}
+                  className="ml-auto px-3 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center gap-2"
+                >
+                  <Trash2 size={15} /> Excluir
                 </button>
               </div>
             </div>
