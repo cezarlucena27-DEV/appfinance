@@ -21,6 +21,9 @@ backend/prisma/dev.db*
 # Configuracoes com chave de API
 backend/asaas-config.json
 
+# Arquivos enviados pelos usuarios (comprovantes)
+uploads/
+
 # Logs
 *.log
 logs/
