@@ -85,23 +85,35 @@ export function Settings() {
       )}
 
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Tab Navigation */}
+        {/* Abas: dropdown no celular, coluna no desktop */}
         <div className="lg:w-56 shrink-0">
-          <nav className="flex lg:flex-col gap-1 overflow-x-auto scrollbar-thin pb-1" aria-label="Configurações">
+          <select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value)}
+            className="input w-full lg:hidden"
+            aria-label="Seções de configurações"
+          >
+            {tabs.map((tab) => (
+              <option key={tab.id} value={tab.id}>
+                {tab.label}
+              </option>
+            ))}
+          </select>
+          <nav className="hidden lg:flex lg:flex-col gap-1" aria-label="Configurações">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap text-left ${
                     activeTab === tab.id
                       ? 'bg-primary text-white'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  } truncate`}
+                  }`}
                 >
                   <Icon size={18} className="flex-shrink-0" aria-hidden="true" />
-                  <span className="truncate">{tab.label}</span>
+                  <span>{tab.label}</span>
                 </button>
               );
             })}

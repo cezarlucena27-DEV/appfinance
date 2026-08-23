@@ -2536,24 +2536,39 @@ export function Admin() {
         )}
 
         <div className="flex flex-col lg:flex-row gap-6">
-          <div className="lg:w-56 flex lg:flex-col gap-1 overflow-x-auto">
-            {configTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setConfigTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                    configTab === tab.id
-                      ? 'bg-primary text-white'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Icon size={18} />
+          {/* Abas: dropdown no celular, coluna no desktop */}
+          <div className="lg:w-56 shrink-0">
+            <select
+              value={configTab}
+              onChange={(e) => setConfigTab(e.target.value)}
+              className="input w-full lg:hidden"
+              aria-label="Seções de configuração"
+            >
+              {configTabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
                   {tab.label}
-                </button>
-              );
-            })}
+                </option>
+              ))}
+            </select>
+            <nav className="hidden lg:flex lg:flex-col gap-1">
+              {configTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setConfigTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors whitespace-nowrap text-left ${
+                      configTab === tab.id
+                        ? 'bg-primary text-white'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon size={18} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
           <div className="flex-1">
