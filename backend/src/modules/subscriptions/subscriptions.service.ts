@@ -25,10 +25,14 @@ export class SubscriptionsService {
   }
 
   getPublicPaymentInfo() {
-    let financeEmail = 'cezar.lucena27@gmail.com';
+    // Nunca expor email pessoal ao publico - padrao generico "administrador"
+    // (pode ser sobrescrito com um endereco real via arquivo de configuracao PIX se desejar)
+    let financeEmail = 'administrador';
     try {
       const raw = readFileSync(this.getPixConfigPath(), 'utf-8');
-      financeEmail = (JSON.parse(raw).financeEmail || financeEmail).trim();
+      const configured = (JSON.parse(raw).financeEmail || '').trim();
+      // so aceita endereco de email valido como override
+      financeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(configured) ? configured : financeEmail;
     } catch {
       // keep default
     }

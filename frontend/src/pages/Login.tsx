@@ -111,6 +111,7 @@ export function Login() {
     }
   };
 
+  const hasFinanceEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentInfo.financeEmail);
   const mailtoHref = `mailto:${paymentInfo.financeEmail}?subject=${encodeURIComponent('Comprovante de pagamento - FinanceApp')}&body=${encodeURIComponent(`Ola!\n\nSegue em anexo o comprovante do pagamento.\n\nE-mail do cadastro: ${email}\nPlano: \nValor pago: R$ \nData do pagamento: \n\nObrigado!`)}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -305,16 +306,27 @@ export function Login() {
                   )}
 
                   <div>
-                    <a
-                      href={mailtoHref}
-                      className="w-full btn-primary flex items-center justify-center gap-2 no-underline"
-                    >
-                      <Mail size={16} />
-                      Enviar comprovante
-                    </a>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                      O comprovante sera enviado para a equipe financeira
-                    </p>
+                    {hasFinanceEmail ? (
+                      <>
+                        <a
+                          href={mailtoHref}
+                          className="w-full btn-primary flex items-center justify-center gap-2 no-underline"
+                        >
+                          <Mail size={16} />
+                          Enviar comprovante
+                        </a>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                          O comprovante sera enviado para a equipe financeira
+                        </p>
+                      </>
+                    ) : (
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center">
+                        <p className="font-medium text-gray-900 dark:text-gray-100">Enviar comprovante</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          Apos o pagamento, entre em contato com o <strong>administrador</strong> do sistema para enviar o comprovante e liberar seu acesso.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
