@@ -87,19 +87,20 @@ export function Transactions() {
     // Show warning if insufficient balance but allow creation
     const showBalanceWarning = form.type === 'expense' && selectedAccount && amount > selectedAccount.currentBalance + 0.009;
     
+    // Prepare payload - exclude dueDate/isPaid for income
+    const payload = {
+      ...form,
+      amount: parseFloat(form.amount),
+      ...(form.type === 'expense' ? { dueDate: form.dueDate || null, isPaid: form.isPaid } : { dueDate: null, isPaid: true }),
+    };
+    
     setLoading(true);
     try {
       if (editingId) {
-        await api.put('/transactions/' + editingId, {
-          ...form,
-          amount: parseFloat(form.amount),
-        });
+        await api.put('/transactions/' + editingId, payload);
         showFeedback('success', 'Transacao atualizada com sucesso');
       } else {
-        await createTransaction({
-          ...form,
-          amount: parseFloat(form.amount),
-        });
+        await createTransaction(payload);
         showFeedback('success', 'Transacao criada com sucesso');
       }
       
@@ -539,7 +540,7 @@ export function Transactions() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, type: 'expense', categoryId: '' })}
+                  onClick={() => setForm({ ...form, type: 'expense', categoryId: '', dueDate: '', isPaid: false })}
                   className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
                     form.type === 'expense' 
                       ? 'bg-danger text-white' 
@@ -550,7 +551,7 @@ export function Transactions() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, type: 'income', categoryId: '' })}
+                  onClick={() => setForm({ ...form, type: 'income', categoryId: '', dueDate: '', isPaid: false })}
                   className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
                     form.type === 'income' 
                       ? 'bg-success text-white' 
