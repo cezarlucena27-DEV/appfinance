@@ -146,6 +146,7 @@ async update(id: string, userId: string, dto: UpdateTransactionDto) {
       data: {
         ...dto,
         date: dto.date ? new Date(dto.date) : undefined,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : (dto.dueDate === null ? null : undefined),
       },
       include: {
         account: true,
