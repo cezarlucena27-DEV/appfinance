@@ -83,10 +83,10 @@ export function Transactions() {
     setModalError(null);
     const amount = parseFloat(form.amount) || 0;
     const selectedAccount = accounts.find((a: any) => a.id === form.accountId);
-    if (form.type === 'expense' && selectedAccount && amount > selectedAccount.currentBalance + 0.009) {
-      setModalError(`Saldo insuficiente em "${selectedAccount.name}". Disponivel: ${formatCurrency(selectedAccount.currentBalance)}.`);
-      return;
-    }
+    
+    // Show warning if insufficient balance but allow creation
+    const showBalanceWarning = form.type === 'expense' && selectedAccount && amount > selectedAccount.currentBalance + 0.009;
+    
     setLoading(true);
     try {
       if (editingId) {
@@ -102,6 +102,14 @@ export function Transactions() {
         });
         showFeedback('success', 'Transacao criada com sucesso');
       }
+      
+      // Show balance warning after successful creation if needed
+      if (showBalanceWarning) {
+        setTimeout(() => {
+          showFeedback('error', `Atenção: Saldo insuficiente em "${selectedAccount.name}". Disponível: ${formatCurrency(selectedAccount.currentBalance)}. A despesa foi registrada mas não debitada (marque como "Pago" para debitar).`);
+        }, 100);
+      }
+      
       await fetchTransactions();
       setShowModal(false);
       setEditingId(null);

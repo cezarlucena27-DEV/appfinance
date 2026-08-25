@@ -57,12 +57,6 @@ async create(userId: string, dto: CreateTransactionDto) {
       if (!card) throw new ForbiddenException('Cartao nao pertence a este usuario');
     }
 
-    if (dto.type === 'expense' && account.currentBalance + 0.009 < dto.amount) {
-      throw new BadRequestException(
-        `Saldo insuficiente na conta "${account.name}". Disponivel: R$ ${account.currentBalance.toFixed(2)}, despesa: R$ ${dto.amount.toFixed(2)}.`
-      );
-    }
-
     // Check transaction limit based on plan
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { userId },
@@ -87,6 +81,7 @@ async create(userId: string, dto: CreateTransactionDto) {
       throw new ForbiddenException('Limite de transacoes atingido para o seu plano');
     }
 
+    const isPaid = dto.isPaid !== false;
     const transaction = await this.prisma.transaction.create({
       data: {
         userId,
@@ -102,7 +97,7 @@ async create(userId: string, dto: CreateTransactionDto) {
         totalInstallments: dto.totalInstallments,
         currentInstallment: 1,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-        isPaid: dto.isPaid !== false,
+        isPaid,
       },
       include: {
         account: true,
@@ -110,8 +105,10 @@ async create(userId: string, dto: CreateTransactionDto) {
       },
     });
 
-    // Update account balance
-    await this.updateAccountBalance(dto.accountId, dto.type, dto.amount);
+    // Update account balance only if paid
+    if (isPaid) {
+      await this.updateAccountBalance(dto.accountId, dto.type, dto.amount);
+    }
 
     return transaction;
   }
@@ -122,25 +119,27 @@ async update(id: string, userId: string, dto: UpdateTransactionDto) {
     const targetAccountId = dto.accountId || transaction.accountId;
     await this.validateAccountAccess(userId, targetAccountId);
 
-    // Block expense greater than the projected balance after reversing the old effect
     const newType = dto.type || transaction.type;
     const newAmount = dto.amount ?? transaction.amount;
-    if (newType === 'expense') {
-      const target = await this.prisma.account.findUnique({ where: { id: targetAccountId } });
-      let projected = target.currentBalance;
-      if (transaction.accountId === targetAccountId) {
-        if (transaction.type === 'expense') projected += transaction.amount;
-        else if (transaction.type === 'income') projected -= transaction.amount;
-      }
-      if (projected + 0.009 < newAmount) {
-        throw new BadRequestException(
-          `Saldo insuficiente na conta "${target.name}". Disponivel apos alteracao: R$ ${projected.toFixed(2)}, despesa: R$ ${Number(newAmount).toFixed(2)}.`
-        );
-      }
-    }
+    const newIsPaid = dto.isPaid !== undefined ? dto.isPaid : transaction.isPaid;
+    const wasPaid = transaction.isPaid;
 
-    // Reverse old balance effect
-    await this.updateAccountBalance(transaction.accountId, transaction.type, -transaction.amount);
+    // If isPaid changed, handle balance difference
+    if (wasPaid !== newIsPaid) {
+      if (newIsPaid) {
+        // Became paid - debit/credit balance
+        await this.updateAccountBalance(targetAccountId, newType, newAmount);
+      } else {
+        // Became unpaid - reverse balance
+        await this.updateAccountBalance(targetAccountId, newType, -newAmount);
+      }
+    } else if (wasPaid && newIsPaid) {
+      // Was paid and still paid - handle amount/type/account changes
+      // Reverse old effect
+      await this.updateAccountBalance(transaction.accountId, transaction.type, -transaction.amount);
+      // Apply new effect
+      await this.updateAccountBalance(targetAccountId, newType, newAmount);
+    }
 
     const updated = await this.prisma.transaction.update({
       where: { id },
@@ -154,17 +153,16 @@ async update(id: string, userId: string, dto: UpdateTransactionDto) {
       },
     });
 
-    // Apply new balance effect
-    await this.updateAccountBalance(updated.accountId, updated.type, updated.amount);
-
     return updated;
   }
 
-  async remove(id: string, userId: string) {
+async remove(id: string, userId: string) {
     const transaction = await this.findOne(id, userId);
 
-    // Reverse balance effect
-    await this.updateAccountBalance(transaction.accountId, transaction.type, -transaction.amount);
+    // Reverse balance effect only if was paid
+    if (transaction.isPaid) {
+      await this.updateAccountBalance(transaction.accountId, transaction.type, -transaction.amount);
+    }
 
     return this.prisma.transaction.delete({
       where: { id },
