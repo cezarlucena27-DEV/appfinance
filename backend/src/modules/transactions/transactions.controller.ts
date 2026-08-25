@@ -52,6 +52,11 @@ export class TransactionsController {
     return this.transactionsService.getAlerts(req.user.id);
   }
 
+  @Post('recalculate-balance/:accountId')
+  async recalculateBalance(@Param('accountId') accountId: string, @Request() req) {
+    return this.transactionsService.recalculateAccountBalance(accountId, req.user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
     return this.transactionsService.findOne(id, req.user.id);

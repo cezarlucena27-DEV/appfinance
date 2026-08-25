@@ -404,4 +404,32 @@ async getByCategory(userId: string) {
       upcomingDays: 7,
     };
   }
+
+  async recalculateAccountBalance(accountId: string, userId: string) {
+    await this.validateAccountAccess(userId, accountId);
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        accountId,
+        isPaid: true,
+      },
+      select: { type: true, amount: true },
+    });
+
+    let calculatedBalance = 0;
+    for (const t of transactions) {
+      if (t.type === 'income') {
+        calculatedBalance += t.amount;
+      } else if (t.type === 'expense') {
+        calculatedBalance -= t.amount;
+      }
+    }
+
+    await this.prisma.account.update({
+      where: { id: accountId },
+      data: { currentBalance: calculatedBalance },
+    });
+
+    return { accountId, calculatedBalance };
+  }
 }
