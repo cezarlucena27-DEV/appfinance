@@ -22,6 +22,7 @@ interface AppState {
   enabledModules: string[];
   helpTickets: HelpTicket[];
   helpTicketsLoading: boolean;
+  alerts: { overdueCount: number; overdueTotal: number; upcomingCount: number; upcomingTotal: number; upcomingDays: number } | null;
   
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -34,6 +35,9 @@ interface AppState {
   deleteAccount: (id: string) => Promise<void>;
   
   fetchTransactions: (filters?: any) => Promise<void>;
+  fetchUpcoming: (days?: number) => Promise<void>;
+  fetchOverdue: () => Promise<void>;
+  fetchAlerts: () => Promise<void>;
   createTransaction: (data: any) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   
@@ -103,6 +107,7 @@ export const useStore = create<AppState>((set, get) => ({
   monthlyReport: null,
   helpTickets: [],
   helpTicketsLoading: false,
+  alerts: null,
 
   login: async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
@@ -145,7 +150,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({ accounts: data });
   },
 
-createAccount: async (accountData) => {
+  createAccount: async (accountData) => {
     const { user, accounts } = get();
     const plan = user?.workspace?.plan || 'free';
     if (!canCreateAccount(plan, accounts.length)) {
@@ -170,7 +175,7 @@ createAccount: async (accountData) => {
     set({ transactions: data });
   },
 
-createTransaction: async (transactionData) => {
+  createTransaction: async (transactionData) => {
     const { user, transactions } = get();
     const plan = user?.workspace?.plan || 'free';
     if (!isFreePlan(plan)) {
@@ -244,7 +249,7 @@ createTransaction: async (transactionData) => {
     set({ budgets: data });
   },
 
-createBudget: async (budgetData) => {
+  createBudget: async (budgetData) => {
     const { user, budgets } = get();
     const plan = user?.workspace?.plan || 'free';
     if (!canCreateBudget(plan, budgets.length)) {
@@ -259,7 +264,7 @@ createBudget: async (budgetData) => {
     set({ goals: data });
   },
 
-createGoal: async (goalData) => {
+  createGoal: async (goalData) => {
     const { user, goals } = get();
     const plan = user?.workspace?.plan || 'free';
     if (!canCreateGoal(plan, goals.length)) {
@@ -409,5 +414,20 @@ createGoal: async (goalData) => {
   updateHelpTicketStatus: async (id, status) => {
     await api.patch(`/help/tickets/${id}/status`, { status });
     get().fetchHelpTickets();
+  },
+
+  fetchUpcoming: async (days = 30) => {
+    const { data } = await api.get(`/transactions/upcoming?days=${days}`);
+    return data;
+  },
+
+  fetchOverdue: async () => {
+    const { data } = await api.get('/transactions/overdue');
+    return data;
+  },
+
+  fetchAlerts: async () => {
+    const { data } = await api.get('/transactions/alerts');
+    set({ alerts: data });
   },
 }));

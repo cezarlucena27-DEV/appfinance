@@ -31,6 +31,10 @@ A partir da diferença entre as duas leituras e de cinco componentes, sai o Índ
 | Densidade factual | 15% |
 | Coerência estrutural | 15% |
 
+A leitura humana usa apenas os componentes que fazem sentido para uma pessoa —
+Latência, Densidade e Coerência (50/25/25). Portas para robôs e mapas de máquina
+contam só na leitura de IA; é daí que nasce o Gap humano×IA, mesmo sem bloqueio.
+
 O resultado mostra: nota 0–100, alerta, evidência do que a IA leu, consequências,
 comparativo lado a lado (como a IA vê vs. como um humano vê), os cinco componentes,
 o alcance por agente de IA (20 agentes), contexto de mercado e um bloco de assinatura

@@ -32,9 +32,24 @@ export class TransactionsController {
     return this.transactionsService.getMonthlyBalances(req.user.id, startDate, endDate);
   }
 
-  @Get('by-category')
+@Get('by-category')
   getByCategory(@Request() req) {
     return this.transactionsService.getByCategory(req.user.id);
+  }
+
+  @Get('upcoming')
+  getUpcoming(@Request() req, @Query('days') days?: string) {
+    return this.transactionsService.findUpcoming(req.user.id, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('overdue')
+  getOverdue(@Request() req) {
+    return this.transactionsService.findOverdue(req.user.id);
+  }
+
+  @Get('alerts')
+  getAlerts(@Request() req) {
+    return this.transactionsService.getAlerts(req.user.id);
   }
 
   @Get(':id')

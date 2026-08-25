@@ -84,7 +84,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (p === '/assets/app.js' || p === '/assets/app.css') {
-    const file = path.join(PUBLIC, p);
+    const file = path.join(PUBLIC, p.replace(/^\/assets\//, ''));
     if (!fs.existsSync(file)) {
       res.writeHead(404); res.end();
       return;

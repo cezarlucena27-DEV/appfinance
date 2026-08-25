@@ -165,21 +165,54 @@ function findRobotsEntry(groups, agents) {
   return { specific, wildcard, sitemaps };
 }
 
-function isBlocked(entry) {
-  if (!entry) return false;
-  return entry.rules.some(r => r.type === 'disallow' && (r.value === '/' || r.value === '' || r.value.startsWith('/')));
+/* Avaliação de robots.txt por caminho (RFC 9309):
+   - o grupo do agente específico vence o grupo '*' inteiro;
+   - dentro do grupo, vence a regra com prefixo mais longo;
+   - empate de comprimento favorece Allow;
+   - 'Disallow:' vazio significa "nada bloqueado". */
+function ruleApplies(value, pathname) {
+  if (!value) return false;
+  if (value.endsWith('$')) return pathname === value.slice(0, -1);
+  return pathname.startsWith(value);
 }
 
-async function fetchRobots(origin) {
+function pathAllowed(entry, pathname) {
+  if (!entry) return true;
+  let best = null;
+  for (const r of entry.rules) {
+    if (!ruleApplies(r.value, pathname)) continue;
+    const len = r.value.length;
+    if (!best || len > best.len || (len === best.len && r.type === 'allow')) {
+      best = { type: r.type, len };
+    }
+  }
+  return !best || best.type === 'allow';
+}
+
+function groupForAgent(groups, agent) {
+  const wanted = String(agent).toLowerCase();
+  let wild = null;
+  for (const g of groups) {
+    if (g.agent === '__sitemap__') continue;
+    if (g.agent === wanted) return g;
+    if (g.agent === '*') wild = g;
+  }
+  return wild;
+}
+
+function allowsAgent(groups, agent, pathname) {
+  return pathAllowed(groupForAgent(groups, agent), pathname);
+}
+
+async function fetchRobots(origin, pathname = '/') {
   const res = await get(new URL('/robots.txt', origin).href, { 'user-agent': AI_UA }, 10000);
   if (res.status >= 400) {
-    return { exists: false, status: res.status, groups: [], sitemaps: [], aiBlocked: false, anyBlocked: false };
+    return { exists: false, status: res.status, groups: [], sitemaps: [], aiBlocked: false };
   }
   const groups = parseRobotsTxt(res.body);
   const aiEntry = findRobotsEntry(groups, AI_AGENT_NAMES);
-  const anyBlocked = groups.some(g => g.agent !== '__sitemap__' && isBlocked(g));
-  const aiBlocked = (aiEntry.specific && isBlocked(aiEntry.specific)) || (aiEntry.wildcard && isBlocked(aiEntry.wildcard));
-  return { exists: true, status: res.status, groups, sitemaps: aiEntry.sitemaps, anyBlocked, aiBlocked };
+  const aiBlocked = AI_AGENT_NAMES.some(a => !allowsAgent(groups, a, pathname));
+  return { exists: true, status: res.status, groups, sitemaps: aiEntry.sitemaps, aiBlocked };
 }
 
 async function fetchSitemap(origin, sitemapsFromRobots) {
@@ -204,5 +237,5 @@ async function fetchSitemap(origin, sitemapsFromRobots) {
 module.exports = {
   AI_AGENTS, AI_AGENT_NAMES, HUMAN_UA, AI_UA,
   normalizeUrl, ssrfGuard, fetchLikeHuman, fetchLikeAI,
-  fetchRobots, fetchSitemap, findRobotsEntry, isBlocked
+  fetchRobots, fetchSitemap, findRobotsEntry, allowsAgent
 };

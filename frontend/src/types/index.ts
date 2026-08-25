@@ -68,6 +68,12 @@ export interface Transaction {
   category?: Category;
   card?: Card;
   user?: { id: string; name: string; email: string };
+  dueDate?: string;
+  isPaid?: boolean;
+  isRecurring?: boolean;
+  recurrenceType?: string;
+  totalInstallments?: number;
+  currentInstallment?: number;
 }
 
 export interface Category {

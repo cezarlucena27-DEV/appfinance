@@ -1,6 +1,7 @@
-const { AI_AGENTS, findRobotsEntry, isBlocked } = require('./fetch');
+const { AI_AGENTS, allowsAgent } = require('./fetch');
 
-function computeReach(robots, noindex) {
+function computeReach(robots, noindex, pathname) {
+  const path = pathname || '/';
   const states = [];
   const systems = [];
   for (const agent of AI_AGENTS) {
@@ -10,13 +11,10 @@ function computeReach(robots, noindex) {
       continue;
     }
     if (!robots.exists) {
-      states.push(1);
+      states.push(0);
       continue;
     }
-    const entry = findRobotsEntry(robots.groups, [agent.label]);
-    if (entry.specific && isBlocked(entry.specific)) states.push(2);
-    else if (entry.wildcard && isBlocked(entry.wildcard)) states.push(2);
-    else states.push(0);
+    states.push(allowsAgent(robots.groups, agent.label, path) ? 0 : 2);
   }
   const counts = [0, 0, 0];
   for (const s of states) counts[s]++;

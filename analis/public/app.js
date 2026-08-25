@@ -106,6 +106,7 @@
     root.appendChild(gauges(d));
     root.appendChild(compare(d));
     root.appendChild(metrics(d));
+    root.appendChild(actionsSection(d));
     root.appendChild(reach(d));
     root.appendChild(context());
     root.appendChild(assinatura(d));
@@ -377,7 +378,7 @@
     wrap.appendChild(el('div', 'lbl', label));
 
     var R = 68, C = 2 * Math.PI * R, size = 184;
-    var color = score >= 90 ? '#0cce6b' : '#a50e0e';
+    var color = score >= 90 ? '#2f9e44' : '#dc3545';
 
     var ns = 'http://www.w3.org/2000/svg';
     var svg = document.createElementNS(ns, 'svg');
@@ -509,6 +510,7 @@
     head.appendChild(el('span', 'meta', d.ai_score + ' de 100 · ' + d.global_label));
     sec.appendChild(head);
 
+    var clicaveis = 0;
     for (var i = 0; i < d.vectors.length; i++) {
       var v = d.vectors[i];
       var row = el('div', 'metric s-' + v.status);
@@ -532,8 +534,75 @@
       num.setAttribute('data-vec', v.score);
       row.appendChild(num);
 
+      if (v.score < 100 && v.fazer) {
+        clicaveis++;
+        row.className += ' clicavel';
+        row.setAttribute('role', 'button');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('aria-expanded', 'false');
+
+        var seta = el('span', 'seta', '▾');
+        row.appendChild(seta);
+
+        var det = el('div', 'metric-detalhe');
+        var inner = el('div', 'md-inner');
+        var box = el('div', 'md-box');
+        box.appendChild(el('p', 'md-label', 'o que este componente mede'));
+        box.appendChild(el('p', 'md-txt', v.mede || ''));
+        box.appendChild(el('p', 'md-label', 'o que fazer para chegar a 100'));
+        box.appendChild(el('p', 'md-txt md-fazer', v.fazer));
+        inner.appendChild(box);
+        det.appendChild(inner);
+        row.appendChild(det);
+
+        (function (card) {
+          function alternar() {
+            var abriu = !card.classList.contains('aberto');
+            card.classList.toggle('aberto', abriu);
+            card.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+          }
+          card.addEventListener('click', alternar);
+          card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); }
+          });
+        })(row);
+      }
+
       sec.appendChild(row);
     }
+
+    if (clicaveis > 0) {
+      sec.appendChild(el('p', 'passos-foot',
+        clicaveis === 1
+          ? 'Toque no componente para ver o que ele mede e como melhorar.'
+          : 'Toque em um componente para ver o que ele mede e como melhorar.'));
+    }
+    return sec;
+  }
+
+  function actionsSection(d) {
+    var lista = d.actions || [];
+    var sec = el('section', 'section');
+    var head = el('div', 'sec-head');
+    head.appendChild(el('h2', null, 'O que fazer a partir de agora'));
+    head.appendChild(el('span', 'meta',
+      lista.length === 1 ? '1 passo · linguagem simples' : lista.length + ' passos · linguagem simples'));
+    sec.appendChild(head);
+
+    var grid = el('div', 'passos');
+    for (var i = 0; i < lista.length; i++) {
+      var a = lista[i];
+      var item = el('div', 'passo' + (a.severidade === 'ok' ? ' passo-ok' : ''));
+      item.appendChild(el('span', 'passo-n', String(i + 1)));
+      var corpo = el('div', 'passo-c');
+      corpo.appendChild(el('div', 'passo-t', a.titulo));
+      corpo.appendChild(el('p', 'passo-x', a.texto));
+      item.appendChild(corpo);
+      grid.appendChild(item);
+    }
+    sec.appendChild(grid);
+    sec.appendChild(el('p', 'passos-foot',
+      'Sem tempo ou sem quem faça? O plano de correção executa tudo isso por você.'));
     return sec;
   }
 
@@ -588,9 +657,9 @@
       url: 'https://business.adobe.com/blog/ai-traffic-surge-retail-sites-not-machine-readable'
     },
     {
-      n: '1 em 4',
-      k: 'nem abre o seu site',
-      t: 'A pessoa lê a resposta da IA e vai embora. Se a IA não conseguiu ler a sua página, ela responde com o que achou por aí sobre você.',
+      n: '-47%',
+      k: 'de cliques com resposta de IA',
+      t: 'Quando aparece a resposta da inteligência artificial, clicar num site comum quase cai pela metade: 8% das visitas, contra 15% sem a resposta.',
       src: 'Pew Research · 900 pessoas acompanhadas',
       url: 'https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/'
     }

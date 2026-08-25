@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { normalizeUrl, ssrfGuard, fetchLikeHuman, fetchLikeAI, fetchRobots, fetchSitemap } = require('./fetch');
 const { buildAnalysis } = require('./parse');
-const { computeMetrics, buildConsequences, globalOf } = require('./metrics');
+const { computeMetrics, buildConsequences, buildActions, globalOf, humanTotalOf } = require('./metrics');
 const { computeReach } = require('./reach');
 
 const CACHE_TTL_MS = 3 * 60 * 1000;
@@ -48,7 +48,7 @@ async function scan(rawUrl) {
   const human = await fetchLikeHuman(url.href);
   const ai = await fetchLikeAI(url.href);
 
-  const robots = await fetchRobots(url.origin).catch(() => ({ exists: false, groups: [], sitemaps: [] }));
+  const robots = await fetchRobots(url.origin, url.pathname).catch(() => ({ exists: false, groups: [], sitemaps: [], aiBlocked: false }));
   const sitemap = await fetchSitemap(url.origin, robots.sitemaps).catch(() => ({ ok: false, url: '', status: 0, urlCount: 0 }));
 
   const serverBlock = ai.status !== 200 ? serverBlockLabel(ai) : null;
@@ -81,7 +81,7 @@ async function scan(rawUrl) {
   }, ctxHuman);
 
   const aiScore = serverBlock ? 0 : mAI.total;
-  const humanScore = human.status === 200 ? mHuman.total : 0;
+  const humanScore = human.status === 200 ? humanTotalOf(mHuman.scores) : 0;
   const gap = Math.max(0, humanScore - aiScore);
 
   const vectors = serverBlock
@@ -90,7 +90,7 @@ async function scan(rawUrl) {
   const consequences = buildConsequences(vectors);
   const global = globalOf(aiScore, gap, serverBlock);
 
-  const reach = computeReach(robots, aA ? aA.noindex : false);
+  const reach = computeReach(robots, aA ? aA.noindex : false, url.pathname);
 
   const result = {
     host: url.host,
@@ -111,6 +111,7 @@ async function scan(rawUrl) {
     description: aA ? aA.description : '',
     consequences,
     vectors,
+    actions: buildActions(vectors, !!serverBlock),
     reach,
     ev_id: crypto.randomBytes(8).toString('hex')
   };

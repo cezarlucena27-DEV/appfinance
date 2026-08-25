@@ -309,8 +309,8 @@ async getMonthlySummary(userId: string) {
     return visibleIds;
   }
 
-  async getByCategory(userId: string) {
-const now = new Date();
+async getByCategory(userId: string) {
+    const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
@@ -333,5 +333,76 @@ const now = new Date();
     }, {});
 
     return Object.values(byCategory);
+  }
+
+  async findUpcoming(userId: string, days: number = 30) {
+    const ids = await this.getVisibleAccountIds(userId);
+    const now = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(now.getDate() + days);
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        accountId: { in: [...ids] },
+        type: 'expense',
+        isPaid: false,
+        dueDate: {
+          gte: now,
+          lte: futureDate,
+        },
+      },
+      include: {
+        account: true,
+        category: true,
+        card: true,
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { dueDate: 'asc' },
+    });
+
+    return transactions;
+  }
+
+  async findOverdue(userId: string) {
+    const ids = await this.getVisibleAccountIds(userId);
+    const now = new Date();
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        accountId: { in: [...ids] },
+        type: 'expense',
+        isPaid: false,
+        dueDate: {
+          lt: now,
+        },
+      },
+      include: {
+        account: true,
+        category: true,
+        card: true,
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { dueDate: 'asc' },
+    });
+
+    return transactions;
+  }
+
+  async getAlerts(userId: string) {
+    const [overdue, upcoming] = await Promise.all([
+      this.findOverdue(userId),
+      this.findUpcoming(userId, 7),
+    ]);
+
+    const overdueTotal = overdue.reduce((sum, t) => sum + t.amount, 0);
+    const upcomingTotal = upcoming.reduce((sum, t) => sum + t.amount, 0);
+
+    return {
+      overdueCount: overdue.length,
+      overdueTotal,
+      upcomingCount: upcoming.length,
+      upcomingTotal,
+      upcomingDays: 7,
+    };
   }
 }

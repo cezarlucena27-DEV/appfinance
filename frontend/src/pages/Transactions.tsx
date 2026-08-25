@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, X, ArrowUpRight, ArrowDownRight, Trash2, Pencil, Check, AlertCircle, Filter, Tag } from 'lucide-react';
+import { Plus, X, ArrowUpRight, ArrowDownRight, Trash2, Pencil, Check, AlertCircle, Filter, Tag, Calendar, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react';
 import api from '../lib/api';
-import { format } from 'date-fns';
+import { format, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
@@ -12,9 +12,11 @@ export function Transactions() {
     transactions, 
     accounts, 
     categories,
+    alerts,
     fetchTransactions, 
     fetchAccounts, 
     fetchCategories,
+    fetchAlerts,
     createTransaction,
     deleteTransaction,
     createAccount,
@@ -31,6 +33,8 @@ export function Transactions() {
     date: new Date().toISOString().split('T')[0],
     accountId: '',
     categoryId: '',
+    dueDate: '',
+    isPaid: false,
   });
   const [showNewAccount, setShowNewAccount] = useState(false);
   const [newAccountForm, setNewAccountForm] = useState({ name: '', initialBalance: '', color: '#2563EB' });
@@ -43,6 +47,8 @@ export function Transactions() {
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'overdue' | 'paid'>('all');
+  const [dismissedAlert, setDismissedAlert] = useState(false);
 
   const showFeedback = (type: 'success' | 'error', message: string) => {
     setFeedback({ type, message });
@@ -53,7 +59,24 @@ export function Transactions() {
     fetchTransactions();
     fetchAccounts();
     fetchCategories();
+    fetchAlerts();
   }, []);
+
+  const getTransactionStatus = (txn: any) => {
+    if (txn.isPaid) return 'paid';
+    if (!txn.dueDate) return 'none';
+    const due = parseISO(txn.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return isBefore(due, today) ? 'overdue' : 'upcoming';
+  };
+
+  const statusLabels = {
+    paid: { label: 'Pago', icon: CheckCircle, color: 'text-success bg-success/10', dotColor: 'bg-success' },
+    overdue: { label: 'Vencido', icon: XCircle, color: 'text-danger bg-danger/10', dotColor: 'bg-danger' },
+    upcoming: { label: 'A vencer', icon: Clock, color: 'text-warning bg-warning/10', dotColor: 'bg-yellow-500' },
+    none: { label: '', icon: null, color: '', dotColor: '' },
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +112,8 @@ export function Transactions() {
         date: new Date().toISOString().split('T')[0],
         accountId: '',
         categoryId: '',
+        dueDate: '',
+        isPaid: false,
       });
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Erro ao salvar transacao';
@@ -169,6 +194,8 @@ export function Transactions() {
       date: txn.date.split('T')[0],
       accountId: txn.accountId,
       categoryId: txn.categoryId || '',
+      dueDate: txn.dueDate ? txn.dueDate.split('T')[0] : '',
+      isPaid: txn.isPaid || false,
     });
     setShowModal(true);
   };
@@ -183,6 +210,8 @@ export function Transactions() {
       date: new Date().toISOString().split('T')[0],
       accountId: '',
       categoryId: '',
+      dueDate: '',
+      isPaid: false,
     });
     setShowNewAccount(false);
     setShowNewCategory(false);
@@ -217,6 +246,12 @@ export function Transactions() {
     if (selectedCats.length > 0 && (!t.categoryId || !selectedCats.includes(t.categoryId))) return false;
     if (dateFrom && tDate < dateFrom) return false;
     if (dateTo && tDate > dateTo) return false;
+    
+    const status = getTransactionStatus(t);
+    if (activeTab === 'upcoming' && status !== 'upcoming') return false;
+    if (activeTab === 'overdue' && status !== 'overdue') return false;
+    if (activeTab === 'paid' && status !== 'paid') return false;
+    
     return true;
   });
 
@@ -248,12 +283,68 @@ export function Transactions() {
         </div>
       )}
 
-<div className="flex flex-wrap items-center justify-between gap-3">
+      {!dismissedAlert && alerts && (alerts.overdueCount > 0 || alerts.upcomingCount > 0) && (
+        <div className="fixed top-4 left-4 right-4 z-40 md:left-auto md:right-4 md:w-96">
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 shadow-lg flex items-start gap-3">
+            <AlertTriangle size={20} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-yellow-800 dark:text-yellow-200">Atenção: Despesas pendentes</p>
+              {alerts.overdueCount > 0 && (
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                  <span className="font-medium">{alerts.overdueCount} vencida{alerts.overdueCount > 1 ? 's' : ''}</span> 
+                  ({formatCurrency(alerts.overdueTotal)})
+                </p>
+              )}
+              {alerts.upcomingCount > 0 && (
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                  <span className="font-medium">{alerts.upcomingCount} a vencer</span> nos próximos {alerts.upcomingDays} dias 
+                  ({formatCurrency(alerts.upcomingTotal)})
+                </p>
+              )}
+            </div>
+            <button 
+              onClick={() => setDismissedAlert(true)}
+              className="text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-300 p-1"
+              aria-label="Dispensar alerta"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
   <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Transacoes</h1>
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <Plus size={20} />
           <span className="hidden sm:inline">Nova Transacao</span>
         </button>
+      </div>
+
+      <div className="flex gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
+        {(['all', 'upcoming', 'overdue', 'paid'] as const).map(tab => {
+          const count = transactions.filter(t => getTransactionStatus(t) === tab || (tab === 'all' && true)).length;
+          const tabInfo = tab === 'all' ? { label: 'Todas', icon: null } : statusLabels[tab];
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 flex items-center gap-1 ${
+                activeTab === tab
+                  ? 'text-primary border-primary bg-primary/5'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 border-transparent'
+              }`}
+            >
+              {tabInfo.icon && <tabInfo.icon size={14} />}
+              {tabInfo.label}
+              {tab !== 'all' && (
+                <span className={`px-2 py-0.5 text-xs rounded-full ${tab === 'overdue' ? 'bg-danger/10 text-danger' : tab === 'upcoming' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' : 'bg-success/10 text-success'}`}>
+                  {transactions.filter(t => getTransactionStatus(t) === tab).length}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="card">
@@ -390,24 +481,37 @@ export function Transactions() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {format(new Date(transaction.date), 'dd/MM/yyyy', { locale: ptBR })}
                 </p>
+                {transaction.type === 'expense' && (() => {
+                  const status = getTransactionStatus(transaction);
+                  const info = statusLabels[status];
+                  if (status !== 'none') {
+                    return (
+                      <span key={status} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${info.color}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${info.dotColor}`} />
+                        {info.label}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => openEdit(transaction)}
-                  className="p-2 text-gray-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                  title="Editar"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  onClick={() => handleDelete(transaction.id)}
-                  className="p-2 text-gray-400 dark:text-gray-500 hover:text-danger dark:hover:text-danger transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                  title="Excluir"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+              <button
+                onClick={() => openEdit(transaction)}
+                className="p-2 text-gray-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                title="Editar"
+              >
+                <Pencil size={16} />
+              </button>
+              <button
+                onClick={() => handleDelete(transaction.id)}
+                className="p-2 text-gray-400 dark:text-gray-500 hover:text-danger dark:hover:text-danger transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                title="Excluir"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
             </div>
           ))
         )}
@@ -484,6 +588,31 @@ export function Transactions() {
                   required
                 />
               </div>
+
+              {form.type === 'expense' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Vencimento</label>
+                    <input
+                      type="date"
+                      className="input"
+                      value={form.dueDate}
+                      onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        checked={form.isPaid}
+                        onChange={(e) => setForm({ ...form, isPaid: e.target.checked })}
+                      />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Pago</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="flex items-center justify-between">
