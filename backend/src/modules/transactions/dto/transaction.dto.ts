@@ -76,6 +76,10 @@ export class UpdateTransactionDto {
   @IsOptional()
   date?: string;
 
+  @IsDateString()
+  @IsOptional()
+  dueDate?: string;
+
   @IsBoolean()
   @IsOptional()
   isPaid?: boolean;
