@@ -62,6 +62,13 @@ export function Transactions() {
     fetchAlerts();
   }, []);
 
+  // Reset dismissedAlert when alerts change and there are still alerts
+  useEffect(() => {
+    if (alerts && (alerts.overdueCount > 0 || alerts.upcomingCount > 0)) {
+      setDismissedAlert(false);
+    }
+  }, [alerts]);
+
   const getTransactionStatus = (txn: any) => {
     if (txn.isPaid) return 'paid';
     if (!txn.dueDate) return 'none';
