@@ -112,6 +112,7 @@ export function Transactions() {
       }
       
       await fetchTransactions();
+      fetchAlerts();
       setShowModal(false);
       setEditingId(null);
       setForm({
@@ -136,6 +137,7 @@ export function Transactions() {
     if (!confirm('Tem certeza que deseja excluir esta transacao?')) return;
     try {
       await deleteTransaction(id);
+      fetchAlerts();
       showFeedback('success', 'Transacao excluida com sucesso');
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Erro ao excluir transacao';
