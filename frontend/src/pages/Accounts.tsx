@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, X, Wallet, Trash2, Pencil, Check, AlertCircle, Link2, Info } from 'lucide-react';
+import { Plus, X, Wallet, Trash2, Pencil, Check, AlertCircle, Link2, Info, RefreshCw } from 'lucide-react';
 import { accountTypeLabels, translateLabel } from '../lib/translations';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { isFreePlan, isProPlan, canCreateAccount, getPlanLimit, getLimitMessage } from '../lib/plan';
@@ -8,7 +8,7 @@ import { isFreePlan, isProPlan, canCreateAccount, getPlanLimit, getLimitMessage 
 const PIE_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4', '#a855f7', '#ef4444', '#84cc16'];
 
 export function Accounts() {
-  const { user, accounts, fetchAccounts, createAccount, deleteAccount } = useStore();
+  const { user, accounts, fetchAccounts, createAccount, deleteAccount, recalculateBalance } = useStore();
   const [showModal, setShowModal] = useState(false);
   const [editAccount, setEditAccount] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -165,6 +165,13 @@ export function Accounts() {
               <div className="flex items-center gap-1">
                 {isOwner && (
                   <>
+                    <button
+                      onClick={() => recalculateBalance(account.id)}
+                      className="p-2 text-gray-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                      title="Recalcular saldo"
+                    >
+                      <RefreshCw size={16} />
+                    </button>
                     <button
                       onClick={() => openEdit(account)}
                       className="p-2 text-gray-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"

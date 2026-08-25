@@ -33,6 +33,7 @@ interface AppState {
   fetchAccounts: () => Promise<void>;
   createAccount: (data: any) => Promise<any>;
   deleteAccount: (id: string) => Promise<void>;
+  recalculateBalance: (accountId: string) => Promise<void>;
   
   fetchTransactions: (filters?: any) => Promise<void>;
   fetchUpcoming: (days?: number) => Promise<void>;
@@ -163,6 +164,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   deleteAccount: async (id) => {
     await api.delete(`/accounts/${id}`);
+    get().fetchAccounts();
+  },
+
+  recalculateBalance: async (accountId) => {
+    await api.post(`/transactions/recalculate-balance/${accountId}`);
     get().fetchAccounts();
   },
 
