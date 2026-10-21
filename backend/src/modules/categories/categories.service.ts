@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { DEFAULT_CATEGORIES } from '../../common/default-categories';
+import { getPlanLimits } from '../../common/plan-limits';
 
 @Injectable()
 export class CategoriesService {
@@ -57,18 +58,23 @@ export class CategoriesService {
   }
 
   async create(userId: string, dto: CreateCategoryDto) {
-    const customCategoryCount = await this.prisma.category.count({
-      where: { userId, isDefault: false },
-    });
+    const [customCategoryCount, membership] = await Promise.all([
+      this.prisma.category.count({ where: { userId, isDefault: false } }),
+      this.prisma.workspaceMember.findFirst({
+        where: { userId },
+        include: { workspace: true },
+      }),
+    ]);
 
-    if (customCategoryCount >= 20) {
-      throw new ForbiddenException('Limite de categorias atingido para o plano Gratuito');
+    const limits = getPlanLimits(membership?.workspace?.plan);
+    if (customCategoryCount >= limits.categories) {
+      throw new ForbiddenException('Limite de categorias atingido para o seu plano');
     }
 
     return this.prisma.category.create({
       data: {
         userId,
-        name: dto.name,
+        name: dto.name.trim(),
         icon: dto.icon || 'tag',
         color: dto.color || '#64748B',
         type: dto.type,
@@ -78,23 +84,31 @@ export class CategoriesService {
   }
 
   async update(id: string, userId: string, dto: UpdateCategoryDto) {
-    const category = await this.findOne(id, userId);
+    await this.findOne(id, userId);
+
+    const data: Partial<UpdateCategoryDto> = {};
+    if (dto.name !== undefined) data.name = dto.name.trim();
+    if (dto.icon !== undefined) data.icon = dto.icon;
+    if (dto.color !== undefined) data.color = dto.color;
+    if (dto.type !== undefined) data.type = dto.type;
+    if (dto.isDefault !== undefined) data.isDefault = dto.isDefault;
+
     return this.prisma.category.update({
       where: { id },
-      data: dto,
+      data,
     });
   }
 
   async remove(id: string, userId: string) {
-    const category = await this.findOne(id, userId);
+    await this.findOne(id, userId);
 
     await this.prisma.transaction.updateMany({
-      where: { categoryId: id },
+      where: { categoryId: id, userId },
       data: { categoryId: null },
     });
 
     await this.prisma.budget.updateMany({
-      where: { categoryId: id },
+      where: { categoryId: id, userId },
       data: { categoryId: null },
     });
 

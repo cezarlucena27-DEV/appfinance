@@ -1,10 +1,16 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean, Min, IsIn } from 'class-validator';
+
+const ACCOUNT_TYPES = [
+  'checking', 'savings', 'cash', 'credit', 'investment',
+  'corrente', 'poupanca', 'dinheiro', 'credito', 'investimento',
+];
 
 export class CreateAccountDto {
   @IsString()
   name: string;
 
   @IsString()
+  @IsIn(ACCOUNT_TYPES)
   @IsOptional()
   type?: string;
 
@@ -31,6 +37,7 @@ export class UpdateAccountDto {
   name?: string;
 
   @IsString()
+  @IsIn(ACCOUNT_TYPES)
   @IsOptional()
   type?: string;
 

@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTransactionDto, UpdateTransactionDto } from './dto/transaction.dto';
+import { getPlanLimits } from '../../common/plan-limits';
+import { balanceDelta, moneyNumber } from '../../common/money';
+import { parseDateOnly } from '../../common/date.util';
 
 @Injectable()
 export class TransactionsService {
@@ -12,8 +16,8 @@ async findAll(userId: string, filters?: { startDate?: string; endDate?: string; 
 
     if (filters.startDate || filters.endDate) {
       where.date = {};
-      if (filters.startDate) where.date.gte = new Date(filters.startDate);
-      if (filters.endDate) where.date.lte = new Date(filters.endDate);
+      if (filters.startDate) where.date.gte = parseDateOnly(filters.startDate);
+      if (filters.endDate) where.date.lte = parseDateOnly(filters.endDate);
     }
 
     if (filters.type) {
@@ -52,12 +56,12 @@ async findAll(userId: string, filters?: { startDate?: string; endDate?: string; 
 
 async create(userId: string, dto: CreateTransactionDto) {
     const account = await this.validateAccountAccess(userId, dto.accountId);
+    await this.validateCategory(userId, dto.categoryId);
     if (dto.cardId) {
       const card = await this.prisma.card.findFirst({ where: { id: dto.cardId, userId } });
       if (!card) throw new ForbiddenException('Cartao nao pertence a este usuario');
     }
 
-    // Check transaction limit based on plan
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { userId },
       include: { workspace: true },
@@ -74,99 +78,124 @@ async create(userId: string, dto: CreateTransactionDto) {
       },
     });
 
-    const limits = { free: 50, premium: 999999, pro: 999999 };
-    const plan = (membership?.workspace?.plan || 'free') as keyof typeof limits;
-    
-    if (transactionCount >= limits[plan]) {
+    const limits = getPlanLimits(membership?.workspace?.plan);
+
+    if (transactionCount >= limits.transactions) {
       throw new ForbiddenException('Limite de transacoes atingido para o seu plano');
     }
 
     const isPaid = dto.isPaid !== false;
-    const transaction = await this.prisma.transaction.create({
-      data: {
-        userId,
-        accountId: dto.accountId,
-        categoryId: dto.categoryId,
-        cardId: dto.cardId,
-        type: dto.type,
-        amount: dto.amount,
-        description: dto.description,
-        date: new Date(dto.date),
-        isRecurring: dto.isRecurring || false,
-        recurrenceType: dto.recurrenceType,
-        totalInstallments: dto.totalInstallments,
-        currentInstallment: 1,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-        isPaid,
-      },
-      include: {
-        account: true,
-        category: true,
-      },
+    const amount = new Prisma.Decimal(dto.amount);
+    const date = parseDateOnly(dto.date);
+    if (!date) throw new BadRequestException('Data invalida');
+
+    return this.prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.create({
+        data: {
+          userId,
+          accountId: account.id,
+          categoryId: dto.categoryId || null,
+          cardId: dto.cardId || null,
+          type: dto.type,
+          amount,
+          description: dto.description,
+          date,
+          isRecurring: dto.isRecurring || false,
+          recurrenceType: dto.recurrenceType,
+          totalInstallments: dto.totalInstallments,
+          currentInstallment: 1,
+          dueDate: parseDateOnly(dto.dueDate),
+          isPaid,
+        },
+        include: {
+          account: true,
+          category: true,
+        },
+      });
+
+      if (isPaid) {
+        await tx.account.update({
+          where: { id: account.id },
+          data: { currentBalance: { increment: balanceDelta(dto.type, amount) } },
+        });
+      }
+
+      return transaction;
     });
-
-    // Update account balance only if paid
-    if (isPaid) {
-      await this.updateAccountBalance(dto.accountId, dto.type, dto.amount);
-    }
-
-    return transaction;
   }
 
 async update(id: string, userId: string, dto: UpdateTransactionDto) {
     const transaction = await this.findOne(id, userId);
+    if (transaction.userId !== userId) {
+      throw new ForbiddenException('Apenas o autor pode alterar esta transacao');
+    }
 
     const targetAccountId = dto.accountId || transaction.accountId;
     await this.validateAccountAccess(userId, targetAccountId);
-
-    const newType = dto.type || transaction.type;
-    const newAmount = dto.amount ?? transaction.amount;
-    const newIsPaid = dto.isPaid !== undefined ? dto.isPaid : transaction.isPaid;
-    const wasPaid = transaction.isPaid;
-
-    // If isPaid changed, handle balance difference
-    if (wasPaid !== newIsPaid) {
-      if (newIsPaid) {
-        // Became paid - debit/credit balance
-        await this.updateAccountBalance(targetAccountId, newType, newAmount);
-      } else {
-        // Became unpaid - reverse balance
-        await this.updateAccountBalance(targetAccountId, newType, -newAmount);
-      }
-    } else if (wasPaid && newIsPaid) {
-      // Was paid and still paid - handle amount/type/account changes
-      // Reverse old effect
-      await this.updateAccountBalance(transaction.accountId, transaction.type, -transaction.amount);
-      // Apply new effect
-      await this.updateAccountBalance(targetAccountId, newType, newAmount);
+    if (dto.categoryId !== undefined) await this.validateCategory(userId, dto.categoryId);
+    if (dto.cardId) {
+      const card = await this.prisma.card.findFirst({ where: { id: dto.cardId, userId } });
+      if (!card) throw new ForbiddenException('Cartao nao pertence a este usuario');
     }
 
-    const updated = await this.prisma.transaction.update({
-      where: { id },
-      data: {
-        ...dto,
-        date: dto.date ? new Date(dto.date) : undefined,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : (dto.dueDate === null ? null : undefined),
-      },
-      include: {
-        account: true,
-        category: true,
-      },
-    });
+    const newType = dto.type || transaction.type;
+    const newAmount = dto.amount !== undefined ? new Prisma.Decimal(dto.amount) : new Prisma.Decimal(transaction.amount);
+    const newIsPaid = dto.isPaid !== undefined ? dto.isPaid : transaction.isPaid;
 
-    return updated;
+    const data: Prisma.TransactionUpdateInput = {};
+    if (dto.type !== undefined) data.type = dto.type;
+    if (dto.accountId !== undefined) data.account = { connect: { id: targetAccountId } };
+    if (dto.categoryId !== undefined) {
+      data.category = dto.categoryId ? { connect: { id: dto.categoryId } } : { disconnect: true };
+    }
+    if (dto.cardId !== undefined) {
+      data.card = dto.cardId ? { connect: { id: dto.cardId } } : { disconnect: true };
+    }
+    if (dto.amount !== undefined) data.amount = newAmount;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.date !== undefined) data.date = parseDateOnly(dto.date) as Date;
+    if (dto.dueDate !== undefined) data.dueDate = parseDateOnly(dto.dueDate);
+    if (dto.isPaid !== undefined) data.isPaid = dto.isPaid;
+
+    return this.prisma.$transaction(async (tx) => {
+      if (transaction.isPaid) {
+        await tx.account.update({
+          where: { id: transaction.accountId },
+          data: { currentBalance: { decrement: balanceDelta(transaction.type, transaction.amount) } },
+        });
+      }
+
+      const updated = await tx.transaction.update({
+        where: { id },
+        data,
+        include: { account: true, category: true },
+      });
+
+      if (newIsPaid) {
+        await tx.account.update({
+          where: { id: targetAccountId },
+          data: { currentBalance: { increment: balanceDelta(newType, newAmount) } },
+        });
+      }
+
+      return updated;
+    });
   }
 
 async remove(id: string, userId: string) {
     const transaction = await this.findOne(id, userId);
-
-    // Reverse balance effect only if was paid
-    if (transaction.isPaid) {
-      await this.updateAccountBalance(transaction.accountId, transaction.type, -transaction.amount);
+    if (transaction.userId !== userId) {
+      throw new ForbiddenException('Apenas o autor pode excluir esta transacao');
     }
 
-    return this.prisma.transaction.delete({
-      where: { id },
+    return this.prisma.$transaction(async (tx) => {
+      if (transaction.isPaid) {
+        await tx.account.update({
+          where: { id: transaction.accountId },
+          data: { currentBalance: { decrement: balanceDelta(transaction.type, transaction.amount) } },
+        });
+      }
+      return tx.transaction.delete({ where: { id } });
     });
   }
 
@@ -179,12 +208,7 @@ async remove(id: string, userId: string) {
     if (account.userId === userId) return account;
 
     const isLinkedUser = account.shares.some(s => s.userId === userId);
-    const ownerSharedWithMe = !isLinkedUser
-      ? await this.prisma.accountShare.findFirst({
-          where: { account: { userId }, userId: account.userId },
-        })
-      : null;
-    if (isLinkedUser || ownerSharedWithMe) {
+    if (isLinkedUser) {
       const membership = await this.prisma.workspaceMember.findFirst({ where: { userId } });
       const ownerMembership = await this.prisma.workspaceMember.findFirst({
         where: { userId: account.userId },
@@ -197,23 +221,12 @@ async remove(id: string, userId: string) {
     throw new ForbiddenException('Conta nao pertence a este usuario');
   }
 
-  private async updateAccountBalance(accountId: string, type: string, amount: number) {
-    const account = await this.prisma.account.findUnique({
-      where: { id: accountId },
+  private async validateCategory(userId: string, categoryId?: string | null) {
+    if (!categoryId) return;
+    const category = await this.prisma.category.findFirst({
+      where: { id: categoryId, OR: [{ userId }, { userId: null }] },
     });
-
-    let newBalance = account.currentBalance;
-    
-    if (type === 'income') {
-      newBalance += amount;
-    } else if (type === 'expense') {
-      newBalance -= amount;
-    }
-
-    await this.prisma.account.update({
-      where: { id: accountId },
-      data: { currentBalance: newBalance },
-    });
+    if (!category) throw new ForbiddenException('Categoria nao pertence a este usuario');
   }
 
   async getMonthlyBalances(userId: string, startDate?: string, endDate?: string) {
@@ -244,8 +257,8 @@ async remove(id: string, userId: string) {
     for (const t of transactions) {
       const key = `${t.date.getFullYear()}-${String(t.date.getMonth() + 1).padStart(2, '0')}`;
       const entry = byMonth.get(key) || { income: 0, expenses: 0 };
-      if (t.type === 'income') entry.income += t.amount;
-      else if (t.type === 'expense') entry.expenses += t.amount;
+      if (t.type === 'income') entry.income += moneyNumber(t.amount);
+      else if (t.type === 'expense') entry.expenses += moneyNumber(t.amount);
       byMonth.set(key, entry);
     }
 
@@ -265,7 +278,7 @@ async remove(id: string, userId: string) {
 async getMonthlySummary(userId: string) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const visibleIds = await this.getVisibleAccountIds(userId);
 
@@ -278,40 +291,41 @@ async getMonthlySummary(userId: string) {
 
     const income = transactions
       .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + moneyNumber(t.amount), 0);
 
     const expenses = transactions
       .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + moneyNumber(t.amount), 0);
 
     return { income, expenses, balance: income - expenses };
   }
 
   private async getVisibleAccountIds(userId: string) {
     const own = await this.prisma.account.findMany({ where: { userId }, select: { id: true } });
-    const shares = await this.prisma.accountShare.findMany({ where: { userId }, select: { accountId: true } });
-    const sharesByMe = await this.prisma.accountShare.findMany({
-      where: { account: { userId } },
-      select: { userId: true },
+    const membership = await this.prisma.workspaceMember.findFirst({
+      where: { userId },
+      select: { workspaceId: true },
+    });
+
+    const shares = await this.prisma.accountShare.findMany({
+      where: {
+        userId,
+        ...(membership
+          ? { account: { user: { memberships: { some: { workspaceId: membership.workspaceId } } } } }
+          : {}),
+      },
+      select: { accountId: true },
     });
 
     const visibleIds = new Set<string>(own.map(a => a.id));
-    for (const s of shares) visibleIds.add(s.accountId);
-    const partnerIds = [...new Set(sharesByMe.map(s => s.userId))];
-    if (partnerIds.length) {
-      const partnerAccounts = await this.prisma.account.findMany({
-        where: { userId: { in: partnerIds } },
-        select: { id: true },
-      });
-      for (const a of partnerAccounts) visibleIds.add(a.id);
-    }
+    for (const share of shares) visibleIds.add(share.accountId);
     return visibleIds;
   }
 
 async getByCategory(userId: string) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const ids = await this.getVisibleAccountIds(userId);
 
@@ -325,11 +339,11 @@ async getByCategory(userId: string) {
     });
 
     const byCategory = transactions.reduce((acc, t) => {
-      const catName = t.category.name;
-      if (!acc[catName]) acc[catName] = { name: catName, color: t.category.color, total: 0 };
-      acc[catName].total += t.amount;
+      const catName = t.category?.name || 'Sem categoria';
+      if (!acc[catName]) acc[catName] = { name: catName, color: t.category?.color || '#64748B', total: 0 };
+      acc[catName].total += moneyNumber(t.amount);
       return acc;
-    }, {});
+    }, {} as Record<string, { name: string; color: string; total: number }>);
 
     return Object.values(byCategory);
   }
@@ -393,8 +407,8 @@ async getByCategory(userId: string) {
       this.findUpcoming(userId, 7),
     ]);
 
-    const overdueTotal = overdue.reduce((sum, t) => sum + t.amount, 0);
-    const upcomingTotal = upcoming.reduce((sum, t) => sum + t.amount, 0);
+    const overdueTotal = overdue.reduce((sum, t) => sum + moneyNumber(t.amount), 0);
+    const upcomingTotal = upcoming.reduce((sum, t) => sum + moneyNumber(t.amount), 0);
 
     return {
       overdueCount: overdue.length,
@@ -406,7 +420,10 @@ async getByCategory(userId: string) {
   }
 
   async recalculateAccountBalance(accountId: string, userId: string) {
-    await this.validateAccountAccess(userId, accountId);
+    const account = await this.validateAccountAccess(userId, accountId);
+    if (account.userId !== userId) {
+      throw new ForbiddenException('Apenas o proprietario pode recalcular o saldo');
+    }
 
     const transactions = await this.prisma.transaction.findMany({
       where: {
@@ -416,13 +433,9 @@ async getByCategory(userId: string) {
       select: { type: true, amount: true },
     });
 
-    let calculatedBalance = 0;
+    let calculatedBalance = new Prisma.Decimal(account.initialBalance);
     for (const t of transactions) {
-      if (t.type === 'income') {
-        calculatedBalance += t.amount;
-      } else if (t.type === 'expense') {
-        calculatedBalance -= t.amount;
-      }
+      calculatedBalance = calculatedBalance.plus(balanceDelta(t.type, t.amount));
     }
 
     await this.prisma.account.update({
@@ -430,6 +443,6 @@ async getByCategory(userId: string) {
       data: { currentBalance: calculatedBalance },
     });
 
-    return { accountId, calculatedBalance };
+    return { accountId, calculatedBalance: moneyNumber(calculatedBalance) };
   }
 }

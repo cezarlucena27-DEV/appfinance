@@ -1,10 +1,13 @@
-import { IsString, IsNumber, IsOptional, Min, Max } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, Max, IsIn } from 'class-validator';
+
+const CARD_BRANDS = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'diners', 'outra'];
 
 export class CreateCardDto {
   @IsString()
   name: string;
 
   @IsString()
+  @IsIn(CARD_BRANDS)
   @IsOptional()
   brand?: string;
 
@@ -32,6 +35,7 @@ export class UpdateCardDto {
   name?: string;
 
   @IsString()
+  @IsIn(CARD_BRANDS)
   @IsOptional()
   brand?: string;
 

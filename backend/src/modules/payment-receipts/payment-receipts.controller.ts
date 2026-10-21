@@ -7,6 +7,9 @@ import { Response } from 'express';
 import { PaymentReceiptsService, RECEIPTS_ALLOWED_MIMES, RECEIPTS_MAX_SIZE, getReceiptsDir } from './payment-receipts.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
+import { AdminPanelGuard } from '../../common/guards/admin-panel.guard';
+import { AdminPanel } from '../../common/decorators/admin-panel.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
@@ -16,6 +19,7 @@ export class PublicPaymentReceiptsController {
   constructor(private receiptsService: PaymentReceiptsService) {}
 
   @Post('payment-receipts')
+  @UseGuards(RateLimitGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -51,8 +55,9 @@ export class PublicPaymentReceiptsController {
   }
 }
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
 @Roles('platform_admin')
+@AdminPanel('configs')
 @Controller('admin/payment-receipts')
 export class AdminPaymentReceiptsController {
   constructor(private receiptsService: PaymentReceiptsService) {}

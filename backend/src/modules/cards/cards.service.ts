@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCardDto, UpdateCardDto } from './dto/card.dto';
+import { getPlanLimits } from '../../common/plan-limits';
+import { Prisma } from '@prisma/client';
+import { moneyNumber } from '../../common/money';
 
 @Injectable()
 export class CardsService {
@@ -32,23 +35,24 @@ export class CardsService {
       where: { userId },
     });
 
-    const limits = { free: 2, premium: 5, pro: 999999 };
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { userId },
       include: { workspace: true },
     });
-    const plan = (membership?.workspace?.plan || 'free') as keyof typeof limits;
-    
-    if (cardCount >= limits[plan]) {
+    const limits = getPlanLimits(membership?.workspace?.plan);
+
+    if (cardCount >= limits.cards) {
       throw new ForbiddenException('Limite de cartoes atingido para o seu plano');
     }
+
+    await this.assertOwnedAccount(userId, dto.accountId);
 
     return this.prisma.card.create({
       data: {
         userId,
-        name: dto.name,
+        name: dto.name.trim(),
         brand: dto.brand || 'other',
-        limit: dto.limit,
+        limit: new Prisma.Decimal(dto.limit),
         closingDay: dto.closingDay,
         dueDay: dto.dueDay,
         accountId: dto.accountId,
@@ -59,11 +63,26 @@ export class CardsService {
 
   async update(id: string, userId: string, dto: UpdateCardDto) {
     await this.findOne(id, userId);
+    if (dto.accountId) await this.assertOwnedAccount(userId, dto.accountId);
+
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) data.name = dto.name.trim();
+    if (dto.brand !== undefined) data.brand = dto.brand;
+    if (dto.limit !== undefined) data.limit = new Prisma.Decimal(dto.limit);
+    if (dto.closingDay !== undefined) data.closingDay = dto.closingDay;
+    if (dto.dueDay !== undefined) data.dueDay = dto.dueDay;
+    if (dto.accountId !== undefined) data.accountId = dto.accountId;
+
     return this.prisma.card.update({
       where: { id },
-      data: dto,
+      data,
       include: { account: true },
     });
+  }
+
+  private async assertOwnedAccount(userId: string, accountId: string) {
+    const account = await this.prisma.account.findFirst({ where: { id: accountId, userId } });
+    if (!account) throw new ForbiddenException('Conta nao pertence a este usuario');
   }
 
   async remove(id: string, userId: string) {
@@ -86,7 +105,7 @@ export class CardsService {
     await this.findOne(cardId, userId);
 
     const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
     const transactions = await this.prisma.transaction.findMany({
       where: {
@@ -98,8 +117,9 @@ export class CardsService {
       include: { category: true },
     });
 
-    const total = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const total = transactions.reduce((sum, t) => sum + moneyNumber(t.amount), 0);
     const card = await this.prisma.card.findUnique({ where: { id: cardId } });
+    if (!card) throw new NotFoundException('Cartao nao encontrado');
 
     return {
       card,
@@ -107,7 +127,7 @@ export class CardsService {
       year,
       transactions,
       total,
-      availableLimit: card.limit - total,
+      availableLimit: moneyNumber(card.limit) - total,
     };
   }
 }

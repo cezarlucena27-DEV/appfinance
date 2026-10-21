@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import api from '../lib/api';
-import { User, Account, Transaction, Category, Card, Budget, Goal, MonthlySummary, UserAdmin, WorkspaceStats, Segment, Plan, MonthlyReport, HelpTicket } from '../types';
+import api, { refreshAccessToken, setAccessToken } from '../lib/api';
+import { User, Account, Transaction, Category, Card, Budget, Goal, MonthlySummary, UserAdmin, WorkspaceStats, Segment, Plan, MonthlyReport } from '../types';
 import { isFreePlan, canCreateAccount, canCreateCard, canCreateBudget, canCreateGoal, canCreateTransaction, canInviteUser, getLimitMessage } from '../lib/plan';
 
 interface AppState {
@@ -20,13 +20,12 @@ interface AppState {
   subscription: any;
   monthlyReport: MonthlyReport | null;
   enabledModules: string[];
-  helpTickets: HelpTicket[];
-  helpTicketsLoading: boolean;
+
   alerts: { overdueCount: number; overdueTotal: number; upcomingCount: number; upcomingTotal: number; upcomingDays: number } | null;
   
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
   toggleModule: (moduleId: string) => void;
   
@@ -80,9 +79,11 @@ interface AppState {
   fetchMonthlyReport: (month: number, year: number, scope?: string) => Promise<void>;
   checkAuth: () => Promise<void>;
   
-  fetchHelpTickets: () => Promise<void>;
-  createHelpTicket: (data: { subject: string; message: string; category: string }) => Promise<void>;
-  updateHelpTicketStatus: (id: string, status: string) => Promise<void>;
+}
+
+// Limpa tokens legados gravados em localStorage por versoes anteriores.
+for (const key of ['token', 'accessToken', 'refreshToken', 'financeapp_token', 'auth']) {
+  try { localStorage.removeItem(key); } catch {}
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -106,27 +107,25 @@ export const useStore = create<AppState>((set, get) => ({
   plans: [],
   subscription: null,
   monthlyReport: null,
-  helpTickets: [],
-  helpTicketsLoading: false,
   alerts: null,
 
   login: async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
+    setAccessToken(data.accessToken);
     set({ user: data.user });
   },
 
   register: async (name, email, password) => {
     const { data } = await api.post('/auth/register', { name, email, password });
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
+    setAccessToken(data.accessToken);
     set({ user: data.user });
   },
 
-  logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+  logout: async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {}
+    setAccessToken(null);
     set({ user: null, accounts: [], transactions: [], categories: [], cards: [], budgets: [], goals: [], summary: null, users: [], workspaceStats: null, segments: [], plans: [], subscription: null, monthlyReport: null });
   },
 
@@ -391,35 +390,14 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   checkAuth: async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) { set({ authLoading: false }); return; }
     try {
+      await refreshAccessToken();
       const { data } = await api.get('/auth/me');
       set({ user: data, authLoading: false });
     } catch {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      set({ authLoading: false });
+      setAccessToken(null);
+      set({ user: null, authLoading: false });
     }
-  },
-
-  fetchHelpTickets: async () => {
-    set({ helpTicketsLoading: true });
-    try {
-      const { data } = await api.get('/help/tickets');
-      set({ helpTickets: data });
-    } catch {}
-    set({ helpTicketsLoading: false });
-  },
-
-  createHelpTicket: async (ticketData) => {
-    await api.post('/help/tickets', ticketData);
-    get().fetchHelpTickets();
-  },
-
-  updateHelpTicketStatus: async (id, status) => {
-    await api.patch(`/help/tickets/${id}/status`, { status });
-    get().fetchHelpTickets();
   },
 
   fetchUpcoming: async (days = 30) => {

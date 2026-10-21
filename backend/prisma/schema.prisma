@@ -19,7 +19,8 @@ model User {
   deactivatedMessage  String?  @db.Text
   isAdminApproved      Boolean   @default(false)
   approvedBy           String?
-  adminPanels          String    @default("all")
+  adminPanels          String    @default("[]")
+  tokenVersion         Int       @default(0)
   defaultsCreated      Boolean   @default(false)
   createdById          String?
   createdBy            User?     @relation("CreatedUsers", fields: [createdById], references: [id])
@@ -83,8 +84,8 @@ model Account {
   user           User          @relation(fields: [userId], references: [id])
   name           String
   type           String        @default("wallet")
-  initialBalance Float         @default(0)
-  currentBalance Float         @default(0)
+  initialBalance Decimal       @default(0) @db.Decimal(15, 2)
+  currentBalance Decimal       @default(0) @db.Decimal(15, 2)
   icon           String        @default("wallet")
   color          String        @default("#2563EB")
   isPrimary      Boolean       @default(false)
@@ -117,8 +118,8 @@ model Transaction {
   card               Card?     @relation(fields: [cardId], references: [id])
   categoryId         String?
   category           Category? @relation(fields: [categoryId], references: [id])
-  type               String // income, expense, transfer
-  amount             Float
+  type               String // income, expense
+  amount             Decimal       @db.Decimal(15, 2)
   description        String?        @db.Text
   date               DateTime
   isRecurring        Boolean   @default(false)
@@ -153,7 +154,7 @@ model Card {
   user             User              @relation(fields: [userId], references: [id])
   name             String
   brand            String            @default("other")
-  limit            Float
+  limit            Decimal           @db.Decimal(15, 2)
   closingDay       Int
   dueDay           Int
   lastDigits       String?
@@ -172,7 +173,7 @@ model Budget {
   category    Category? @relation(fields: [categoryId], references: [id])
   month       Int
   year        Int
-  limitAmount Float
+  limitAmount Decimal @db.Decimal(15, 2)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -184,8 +185,8 @@ model Goal {
   userId        String
   user          User     @relation(fields: [userId], references: [id])
   name          String
-  targetAmount  Float
-  currentAmount Float    @default(0)
+  targetAmount  Decimal @db.Decimal(15, 2)
+  currentAmount Decimal @default(0) @db.Decimal(15, 2)
   targetDate    DateTime
   accountId     String?
   account       Account? @relation(fields: [accountId], references: [id])
@@ -201,7 +202,7 @@ model Goal {
 model Plan {
   id            String         @id @default(uuid())
   name          String         @unique
-  price         Float
+  price         Decimal        @db.Decimal(15, 2)
   description   String?
   createdAt     DateTime       @default(now())
   subscriptions Subscription[]
@@ -220,7 +221,7 @@ model Subscription {
   billingDay  Int?
   status      String    @default("active")
   nextDueDate DateTime?
-  value       Float     @default(0)
+  value       Decimal   @default(0) @db.Decimal(15, 2)
   blocked     Boolean   @default(false)
   blockReason String?
   accessUntil DateTime?
@@ -233,7 +234,7 @@ model PaymentHistory {
   userId      String
   user        User         @relation(fields: [userId], references: [id])
   planId      String?
-  amount      Float
+  amount      Decimal      @db.Decimal(15, 2)
   status        String       @default("paid")
   dueDate       DateTime
   paidAt        DateTime?

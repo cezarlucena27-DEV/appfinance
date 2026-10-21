@@ -1,7 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, UseGuards, Headers, Query, Param, Req, Res, Request } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, Request, Res, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AuditService } from './audit.service';
-import { AdminLoginDto } from './dto/admin.dto';
+import {
+  AsaasConfigDto,
+  BlockUserDto,
+  CreateAdminDto,
+  RegisterPaymentDto,
+  ToggleUserActiveDto,
+  UnblockUserDto,
+  UpdateAdminPanelsDto,
+  UpdateAdminUserDto,
+  UpdateUserRoleDto,
+} from './dto/admin.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminPanelGuard } from '../../common/guards/admin-panel.guard';
@@ -13,29 +23,20 @@ import { Response } from 'express';
 export class AdminController {
   constructor(private adminService: AdminService, private auditService: AuditService) {}
 
-  @Post('login')
-  login(@Body() dto: AdminLoginDto) { return this.adminService.login(dto.key); }
-
-  @Get('me')
-  async verify(@Headers('authorization') auth: string) {
-    const token = auth?.replace('Bearer ', '');
-    return this.adminService.verify(token || '');
-  }
-
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('overview')
   @Get('stats')
   getStats() { return this.adminService.getStats(); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('overview')
   @Get('online')
   getOnlineUsers() { return this.adminService.getOnlineUsers(); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('overview')
   @Get('monthly-balances')
   getMonthlyBalances(
@@ -47,52 +48,52 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('users')
   @Get('users')
   getUsers() { return this.adminService.getUsers(); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('users')
   @Get('user-summary')
   getUserSummary(@Query('userId') userId: string) { return this.adminService.getUserSummary(userId); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('users')
   @Get('user-detail')
   getUserDetail(@Query('userId') userId: string) { return this.adminService.getUserDetail(userId); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('users')
   @Put('users/:userId')
-  updateUser(@Param('userId') userId: string, @Body() body: { name?: string; email?: string; globalRole?: string; isActive?: boolean }) {
-    return this.adminService.updateUser(userId, body);
+  updateUser(@Param('userId') userId: string, @Body() body: UpdateAdminUserDto, @Req() req: any) {
+    return this.adminService.updateUser(userId, body, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('users')
   @Put('users/:userId/role')
-  updateUserRole(@Param('userId') userId: string, @Body('role') role: string) {
-    return this.adminService.updateUserRole(userId, role);
+  updateUserRole(@Param('userId') userId: string, @Body() body: UpdateUserRoleDto, @Req() req: any) {
+    return this.adminService.updateUserRole(userId, body.role, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('users')
   @Put('users/:userId/toggle-active')
-  toggleUserActive(@Param('userId') userId: string, @Body() body: { message?: string }) {
-    return this.adminService.toggleUserActive(userId, body?.message);
+  toggleUserActive(@Param('userId') userId: string, @Body() body: ToggleUserActiveDto, @Req() req: any) {
+    return this.adminService.toggleUserActive(userId, body?.message, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('users')
   @Post('users/:userId/reset-password')
-  resetUserPassword(@Param('userId') userId: string) { return this.adminService.resetUserPassword(userId); }
+  resetUserPassword(@Param('userId') userId: string, @Req() req: any) { return this.adminService.resetUserPassword(userId, req.user); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
   @Roles('platform_admin')
@@ -116,16 +117,16 @@ export class AdminController {
   @Roles('platform_admin')
   @AdminPanel('admins')
   @Post('admins')
-  createAdmin(@Body() body: { name: string; email: string }, @Req() req: any) {
-    return this.adminService.createAdmin(body, req.user.email);
+  createAdmin(@Body() body: CreateAdminDto, @Req() req: any) {
+    return this.adminService.createAdmin(body, req.user.email, req.user.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
   @Roles('platform_admin')
   @AdminPanel('admins')
   @Put('admins/:userId/panels')
-  updateAdminPanels(@Param('userId') userId: string, @Body() body: { panels: string[] }, @Req() req: any) {
-    return this.adminService.updateAdminPanels(userId, body.panels || [], req.user.email);
+  updateAdminPanels(@Param('userId') userId: string, @Body() body: UpdateAdminPanelsDto, @Req() req: any) {
+    return this.adminService.updateAdminPanels(userId, body.panels || [], req.user.email, req.user.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
@@ -153,7 +154,7 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('logs')
   @Get('audit-logs')
   getAuditLogs(@Query('userId') userId?: string, @Query('entity') entity?: string, @Query('action') action?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
@@ -161,13 +162,13 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('logs')
   @Get('audit-stats')
   getAuditStats() { return this.auditService.getStats(); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('report')
   @Get('report')
   getMonthlyReport(@Query('userId') userId?: string, @Query('month') month?: string, @Query('year') year?: string) {
@@ -175,7 +176,7 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('transactions')
   @Get('all-transactions')
   getAllTransactions(@Query('userId') userId?: string, @Query('month') month?: string, @Query('year') year?: string) {
@@ -183,19 +184,19 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('accounts')
   @Get('all-accounts')
   getAllAccounts(@Query('userId') userId?: string) { return this.adminService.getAllAccounts(userId); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('cards')
   @Get('all-cards')
   getAllCards(@Query('userId') userId?: string) { return this.adminService.getAllCards(userId); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('budgets')
   @Get('all-budgets')
   getAllBudgets(@Query('userId') userId?: string, @Query('month') month?: string, @Query('year') year?: string) {
@@ -203,13 +204,13 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('goals')
   @Get('all-goals')
   getAllGoals(@Query('userId') userId?: string) { return this.adminService.getAllGoals(userId); }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('categories')
   @Get('all-categories')
   getAllCategories(@Query('userId') userId?: string) { return this.adminService.getAllCategories(userId); }
@@ -224,7 +225,7 @@ export class AdminController {
   @Roles('platform_admin')
   @AdminPanel('configs')
   @Put('asaas-config')
-  updateAsaasConfig(@Body() body: { apiKey?: string; webhookUrl?: string; environment?: string }) {
+  updateAsaasConfig(@Body() body: AsaasConfigDto) {
     return this.adminService.updateAsaasConfig(body);
   }
 
@@ -234,39 +235,44 @@ export class AdminController {
   @Get('workspaces')
   getWorkspaces() { return this.adminService.getWorkspaces(); }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
   @Roles('platform_admin')
+  @AdminPanel('configs')
   @Get('subscriptions-finance')
   getSubscriptionsFinance() { return this.adminService.getSubscriptionsFinance(); }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
   @Roles('platform_admin')
+  @AdminPanel('configs')
   @Get('reminder-views')
   getReminderViews() { return this.adminService.getReminderViews(); }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
   @Roles('platform_admin')
+  @AdminPanel('configs')
   @Post('subscriptions-finance/:userId/block')
-  blockUser(@Param('userId') userId: string, @Body() body: { reason?: string }, @Request() req) {
-    return this.adminService.blockUserForPayment(userId, body?.reason, req.user?.email);
+  blockUser(@Param('userId') userId: string, @Body() body: BlockUserDto, @Request() req) {
+    return this.adminService.blockUserForPayment(userId, body?.reason, req.user?.email, req.user?.id);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
   @Roles('platform_admin')
+  @AdminPanel('configs')
   @Post('subscriptions-finance/:userId/unblock')
-  unblockUser(@Param('userId') userId: string, @Body() body: { accessUntil?: string }, @Request() req) {
-    return this.adminService.unblockUserForPayment(userId, body?.accessUntil, req.user?.email);
+  unblockUser(@Param('userId') userId: string, @Body() body: UnblockUserDto, @Request() req) {
+    return this.adminService.unblockUserForPayment(userId, body?.accessUntil, req.user?.email, req.user?.id);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
   @Roles('platform_admin')
+  @AdminPanel('configs')
   @Post('subscriptions-finance/:userId/payments')
-  registerPayment(@Param('userId') userId: string, @Body() body: { amount?: number; dueDate: string; notes?: string }, @Request() req) {
-    return this.adminService.registerPayment(userId, body, req.user?.email);
+  registerPayment(@Param('userId') userId: string, @Body() body: RegisterPaymentDto, @Request() req) {
+    return this.adminService.registerPayment(userId, body, req.user?.email, req.user?.id);
   }
 
 @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('transactions')
   @Get('all-transactions-export')
   getAllTransactionsExport(
@@ -279,7 +285,7 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)
-  @Roles('platform_admin', 'master')
+  @Roles('platform_admin')
   @AdminPanel('overview')
   @Get('export-excel')
   async exportExcel(
@@ -289,8 +295,10 @@ export class AdminController {
     @Query('year') year?: string,
   ) {
     const buffer = await this.adminService.exportExcel(userId, month ? parseInt(month) : undefined, year ? parseInt(year) : undefined);
+    const now = new Date();
+    const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=financeapp-admin-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=financeapp-admin-${stamp}.xlsx`);
     res.send(buffer);
   }
 }

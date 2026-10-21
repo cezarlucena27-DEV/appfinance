@@ -13,6 +13,9 @@ build/
 .env.*
 !.env.example
 
+# Backups com dados reais (e-mails, hashes, IPs)
+backup/
+
 # Banco de dados local
 *.db
 *.db-journal
@@ -31,3 +34,6 @@ logs/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Arquivo criado por engano com `$env` literal (0 bytes)
+backend/$env

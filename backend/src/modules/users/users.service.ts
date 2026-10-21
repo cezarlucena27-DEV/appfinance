@@ -1,7 +1,9 @@
-import { Injectable, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { getPlanLimits } from '../../common/plan-limits';
+import { moneyNumber } from '../../common/money';
 
 @Injectable()
 export class UsersService {
@@ -30,8 +32,8 @@ export class UsersService {
       this.prisma.transaction.groupBy({ by: ['userId'], where: { userId: { in: userIds }, type: 'income' }, _sum: { amount: true } }),
     ]);
 
-    const spendingMap = new Map(spending.map(s => [s.userId, s._sum.amount || 0]));
-    const incomeMap = new Map(income.map(i => [i.userId, i._sum.amount || 0]));
+    const spendingMap = new Map(spending.map(s => [s.userId, moneyNumber(s._sum.amount)]));
+    const incomeMap = new Map(income.map(i => [i.userId, moneyNumber(i._sum.amount)]));
 
     return members.map(m => ({
       ...m.user,
@@ -43,28 +45,34 @@ export class UsersService {
 
   async inviteUser(workspaceId: string, email: string, name: string, createdById?: string) {
     const workspace = await this.prisma.workspace.findUnique({ where: { id: workspaceId } });
+    if (!workspace) throw new NotFoundException('Workspace nao encontrado');
     const memberCount = await this.prisma.workspaceMember.count({ where: { workspaceId } });
+    const limits = getPlanLimits(workspace.plan);
 
-    const limits = { free: 1, premium: 3, pro: 999999 };
-    const plan = (workspace?.plan || 'free') as keyof typeof limits;
-
-    if (memberCount >= limits[plan]) {
+    if (memberCount >= limits.members) {
       throw new ForbiddenException('Para adicionar um usuário, faça um upgrade no seu plano');
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
     const existingMember = await this.prisma.workspaceMember.findFirst({
-      where: { workspaceId, user: { email } },
+      where: { workspaceId, user: { email: normalizedEmail } },
     });
     if (existingMember) throw new ConflictException('Usuario ja existe neste workspace');
 
-    const globalExisting = await this.prisma.user.findFirst({ where: { email } });
+    const globalExisting = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (globalExisting) throw new ConflictException('Email ja cadastrado no sistema');
 
-    const tempPassword = randomBytes(8).toString('hex');
+    const tempPassword = randomBytes(12).toString('base64url') + 'a1';
     const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     const user = await this.prisma.user.create({
-      data: { name, email, passwordHash, globalRole: 'regular', createdById: createdById || null },
+      data: {
+        name: name.trim(),
+        email: normalizedEmail,
+        passwordHash,
+        globalRole: 'regular',
+        createdById: createdById || null,
+      },
     });
 
     await this.prisma.workspaceMember.create({
@@ -74,21 +82,12 @@ export class UsersService {
     return { user: { id: user.id, name: user.name, email: user.email, globalRole: user.globalRole }, tempPassword };
   }
 
-  async updateWorkspacePlan(workspaceId: string, plan: string) {
-    const validPlans = ['free', 'premium', 'pro'];
-    if (!validPlans.includes(plan)) throw new BadRequestException('Plano invalido');
-
-    return this.prisma.workspace.update({
-      where: { id: workspaceId },
-      data: { plan },
-      select: { id: true, name: true, plan: true },
-    });
-  }
-
   async toggleActive(id: string, workspaceId: string, message?: string) {
     const membership = await this.prisma.workspaceMember.findFirst({ where: { userId: id, workspaceId } });
-    if (!membership) throw new Error('Usuario nao encontrado no workspace');
+    if (!membership) throw new NotFoundException('Usuario nao encontrado no workspace');
+    if (membership.role === 'master') throw new BadRequestException('Nao e possivel desativar o master do workspace');
     const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario nao encontrado');
     const nextActive = !user.isActive;
 
     return this.prisma.user.update({
@@ -100,7 +99,9 @@ export class UsersService {
 
   async updateRole(id: string, workspaceId: string, role: string) {
     const membership = await this.prisma.workspaceMember.findFirst({ where: { userId: id, workspaceId } });
-    if (!membership) throw new Error('Usuario nao encontrado no workspace');
+    if (!membership) throw new NotFoundException('Usuario nao encontrado no workspace');
+    if (membership.role === 'master') throw new BadRequestException('Nao e possivel alterar a funcao do master');
+    if (!['admin', 'member'].includes(role)) throw new BadRequestException('Funcao invalida');
 
     await this.prisma.workspaceMember.update({ where: { id: membership.id }, data: { role } });
     return { id, role };
@@ -108,56 +109,83 @@ export class UsersService {
 
   async updateUser(id: string, workspaceId: string, data: { name?: string; email?: string }) {
     const membership = await this.prisma.workspaceMember.findFirst({ where: { userId: id, workspaceId } });
-    if (!membership) throw new Error('Usuario nao encontrado no workspace');
+    if (!membership) throw new NotFoundException('Usuario nao encontrado no workspace');
 
-    if (data.email) {
-      const existing = await this.prisma.user.findFirst({ where: { email: data.email, id: { not: id } } });
-      if (existing) throw new ConflictException('Email ja esta em uso');
+    const update: { name?: string; email?: string } = {};
+    if (data.name !== undefined) {
+      const name = data.name.trim();
+      if (name.length < 2) throw new BadRequestException('Nome invalido');
+      update.name = name;
+    }
+    if (data.email !== undefined) {
+      const email = data.email.trim().toLowerCase();
+      if (email) {
+        const existing = await this.prisma.user.findUnique({ where: { email } });
+        if (existing && existing.id !== id) throw new ConflictException('Email ja esta em uso');
+      }
+      update.email = email;
     }
 
     return this.prisma.user.update({
       where: { id },
-      data,
+      data: update,
       select: { id: true, name: true, email: true, globalRole: true, isActive: true },
     });
   }
 
   async resetPassword(id: string, workspaceId: string) {
     const membership = await this.prisma.workspaceMember.findFirst({ where: { userId: id, workspaceId } });
-    if (!membership) throw new Error('Usuario nao encontrado no workspace');
+    if (!membership) throw new NotFoundException('Usuario nao encontrado no workspace');
 
     const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new Error('Usuario nao encontrado');
+    if (!user) throw new NotFoundException('Usuario nao encontrado');
 
-    const tempPassword = randomBytes(8).toString('hex');
+    const tempPassword = randomBytes(12).toString('base64url') + 'a1';
     const passwordHash = await bcrypt.hash(tempPassword, 12);
-    await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
+    });
     return { tempPassword, email: user.email };
   }
 
   async deleteUser(id: string, workspaceId: string) {
     const membership = await this.prisma.workspaceMember.findFirst({ where: { userId: id, workspaceId } });
-    if (!membership) throw new Error('Usuario nao encontrado no workspace');
-
+    if (!membership) throw new NotFoundException('Usuario nao encontrado no workspace');
     if (membership.role === 'master') throw new BadRequestException('Nao e possivel excluir o master do workspace');
 
-    await this.prisma.workspaceMember.deleteMany({ where: { userId: id } });
-    await this.prisma.auditLog.deleteMany({ where: { userId: id } });
-    await this.prisma.transaction.deleteMany({ where: { userId: id } });
-    await this.prisma.budget.deleteMany({ where: { userId: id } });
-    await this.prisma.goal.deleteMany({ where: { userId: id } });
-    await this.prisma.card.deleteMany({ where: { userId: id } });
-    await this.prisma.category.deleteMany({ where: { userId: id } });
-    await this.prisma.account.deleteMany({ where: { userId: id } });
-    await this.prisma.subscription.deleteMany({ where: { userId: id } });
-    const ownedWorkspaces = await this.prisma.workspace.findMany({ where: { ownerId: id }, select: { id: true } });
-    for (const ws of ownedWorkspaces) {
-      await this.prisma.subscription.deleteMany({ where: { workspaceId: ws.id } });
-      await this.prisma.workspaceMember.deleteMany({ where: { workspaceId: ws.id } });
-      await this.prisma.workspace.delete({ where: { id: ws.id } });
-    }
-    await this.prisma.user.updateMany({ where: { createdById: id }, data: { createdById: null } });
-    await this.prisma.user.delete({ where: { id } });
+    const isOwner = await this.prisma.workspace.count({ where: { id: workspaceId, ownerId: id } });
+    if (isOwner > 0) throw new BadRequestException('Nao e possivel excluir o proprietario do workspace');
+
+    await this.prisma.$transaction(async (tx) => {
+      const accounts = await tx.account.findMany({ where: { userId: id }, select: { id: true } });
+      const accountIds = accounts.map((account) => account.id);
+      const categories = await tx.category.findMany({ where: { userId: id }, select: { id: true } });
+      const categoryIds = categories.map((category) => category.id);
+
+      await tx.accountShare.deleteMany({
+        where: { OR: [{ userId: id }, { accountId: { in: accountIds } }] },
+      });
+      await tx.transaction.deleteMany({
+        where: { OR: [{ userId: id }, { accountId: { in: accountIds } }] },
+      });
+      await tx.budget.updateMany({
+        where: { userId: { not: id }, categoryId: { in: categoryIds } },
+        data: { categoryId: null },
+      });
+      await tx.budget.deleteMany({ where: { userId: id } });
+      await tx.goal.deleteMany({ where: { userId: id } });
+      await tx.card.deleteMany({ where: { userId: id } });
+      await tx.auditLog.deleteMany({ where: { userId: id } });
+      await tx.paymentHistory.deleteMany({ where: { userId: id } });
+      await tx.reminderView.deleteMany({ where: { userId: id } });
+      await tx.category.deleteMany({ where: { userId: id } });
+      await tx.account.deleteMany({ where: { userId: id } });
+      await tx.subscription.deleteMany({ where: { userId: id } });
+      await tx.workspaceMember.deleteMany({ where: { userId: id } });
+      await tx.user.updateMany({ where: { createdById: id }, data: { createdById: null } });
+      await tx.user.delete({ where: { id } });
+    });
     return { deleted: true };
   }
 

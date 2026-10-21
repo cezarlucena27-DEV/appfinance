@@ -6,7 +6,7 @@ import {
   Key, Trash2, ChevronLeft, ChevronRight, AlertTriangle,
   CheckCircle, XCircle, Edit2, Settings as SettingsIcon, Lock,
   Palette, Puzzle, LogOut, Save, UserPlus, Globe, BarChart3, PieChart as PieIcon,
-  FileSpreadsheet, MessageSquare, Mail, Check, X, Bell, Wifi,
+  FileSpreadsheet, X, Bell, Wifi,
   FileText, Image as ImageIcon, Download, Eye, Paperclip
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
@@ -30,7 +30,7 @@ const safeFormatDateTime = (dateStr: string | Date | null | undefined) => {
   return isValid(d) ? format(d, 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '-';
 };
 
-type Tab = 'overview' | 'financeiro' | 'report' | 'users' | 'transactions' | 'accounts' | 'cards' | 'categories' | 'budgets' | 'goals' | 'logs' | 'admins' | 'configs' | 'help';
+type Tab = 'overview' | 'financeiro' | 'report' | 'users' | 'transactions' | 'accounts' | 'cards' | 'categories' | 'budgets' | 'goals' | 'logs' | 'admins' | 'configs';
 
 interface FinanceSubscription {
   id: string;
@@ -61,8 +61,6 @@ interface PaymentReceipt {
   reviewedBy: string | null;
   createdAt: string;
 }
-
-const SUPER_ADMIN_EMAIL = 'cezar.lucena27@gmail.com';
 
 const actionLabels: Record<string, string> = {
   create: 'Criacao',
@@ -163,13 +161,6 @@ export function Admin() {
 
   const [onlineData, setOnlineData] = useState<any>(null);
 
-  const [helpTickets, setHelpTickets] = useState<any[]>([]);
-  const [helpTicketsLoading, setHelpTicketsLoading] = useState(false);
-  const [helpFilterStatus, setHelpFilterStatus] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'closed'>('all');
-  const [helpFilterCategory, setHelpFilterCategory] = useState('');
-  const [respondingTicket, setRespondingTicket] = useState<any>(null);
-  const [responseMessage, setResponseMessage] = useState('');
-
   const [financeSubs, setFinanceSubs] = useState<FinanceSubscription[]>([]);
   const [financeLoading, setFinanceLoading] = useState(false);
   const [reminderViews, setReminderViews] = useState<any[]>([]);
@@ -185,7 +176,7 @@ export function Admin() {
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = !!user?.isSuperAdmin;
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -281,45 +272,6 @@ export function Admin() {
     } catch {}
   };
 
-  const loadHelpTickets = async () => {
-    setHelpTicketsLoading(true);
-    try {
-      const { data } = await api.get('/admin/help/tickets');
-      setHelpTickets(data);
-    } catch {}
-    setHelpTicketsLoading(false);
-  };
-
-  const handleHelpResponse = async (ticketId: string) => {
-    if (!responseMessage.trim()) {
-      showFeedback('error', 'Digite uma resposta');
-      return;
-    }
-    setActionLoading(`help-response-${ticketId}`);
-    try {
-      await api.patch(`/admin/help/tickets/${ticketId}/respond`, { response: responseMessage });
-      showFeedback('success', 'Resposta enviada');
-      setRespondingTicket(null);
-      setResponseMessage('');
-      await loadHelpTickets();
-    } catch (err: any) {
-      showFeedback('error', err?.response?.data?.message || 'Erro ao responder');
-    }
-    setActionLoading(null);
-  };
-
-  const handleHelpStatusChange = async (ticketId: string, status: string) => {
-    setActionLoading(`help-status-${ticketId}`);
-    try {
-      await api.patch(`/admin/help/tickets/${ticketId}/status`, { status });
-      showFeedback('success', 'Status atualizado');
-      await loadHelpTickets();
-    } catch (err: any) {
-      showFeedback('error', err?.response?.data?.message || 'Erro ao atualizar status');
-    }
-    setActionLoading(null);
-  };
-
   useEffect(() => {
     const tab = location.state?.tab as Tab;
     if (tab && tab !== activeTab) setActiveTab(tab);
@@ -353,9 +305,6 @@ export function Admin() {
     if (activeTab === 'configs') {
       fetchSegments();
       loadAsaasConfig();
-    }
-    if (activeTab === 'help') {
-      loadHelpTickets();
     }
     if (activeTab === 'financeiro') {
       loadFinanceSubs();
@@ -733,7 +682,7 @@ export function Admin() {
       const url = window.URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `financeapp-admin-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      { const d = new Date(); link.download = `financeapp-admin-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.xlsx`; }
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -796,7 +745,7 @@ export function Admin() {
     );
   }
 
-  const isSuper = user?.email === SUPER_ADMIN_EMAIL;
+  const isSuper = !!user?.isSuperAdmin;
   let allowedPanels: string[] = [];
   try {
     if (!isSuper && user?.adminPanels && user.adminPanels !== 'all') {
@@ -1702,9 +1651,6 @@ export function Admin() {
       return renderConfigs();
     }
 
-    if (activeTab === 'help') {
-      return renderHelp();
-    }
 
     if (activeTab === 'users') {
       return renderUsersList();
@@ -1879,168 +1825,6 @@ export function Admin() {
     return null;
   }
 
-  function renderHelp() {
-    const statusLabels: Record<string, string> = {
-      all: 'Todos',
-      open: 'Abertos',
-      in_progress: 'Em andamento',
-      resolved: 'Resolvidos',
-      closed: 'Fechados',
-    };
-    const categoryLabels: Record<string, string> = {
-      geral: 'Geral',
-      tecnico: 'Tecnico',
-      cobranca: 'Cobranca',
-      sugestao: 'Sugestao',
-      bug: 'Bug',
-    };
-    const statusColors: Record<string, string> = {
-      open: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-      in_progress: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
-      resolved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-      closed: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-    };
-
-    const filteredTickets = helpTickets.filter(t => {
-      if (helpFilterStatus !== 'all' && t.status !== helpFilterStatus) return false;
-      if (helpFilterCategory && t.category !== helpFilterCategory) return false;
-      return true;
-    });
-
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Central de Suporte</h2>
-          <div className="flex flex-wrap gap-2">
-            <select className="input w-auto" value={helpFilterStatus} onChange={(e) => setHelpFilterStatus(e.target.value as any)}>
-              <option value="all">Todos</option>
-              <option value="open">Abertos</option>
-              <option value="in_progress">Em andamento</option>
-              <option value="resolved">Resolvidos</option>
-              <option value="closed">Fechados</option>
-            </select>
-            <select className="input w-auto" value={helpFilterCategory} onChange={(e) => setHelpFilterCategory(e.target.value)}>
-              <option value="">Todas categorias</option>
-              <option value="geral">Geral</option>
-              <option value="tecnico">Tecnico</option>
-              <option value="cobranca">Cobranca</option>
-              <option value="sugestao">Sugestao</option>
-              <option value="bug">Bug</option>
-            </select>
-          </div>
-        </div>
-
-        {helpTicketsLoading ? (
-          <div className="card text-center py-8"><p className="text-gray-500 dark:text-gray-400">Carregando...</p></div>
-        ) : filteredTickets.length === 0 ? (
-          <div className="card text-center py-12">
-            <MessageSquare size={48} className="mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-            <p className="text-gray-500 dark:text-gray-400">Nenhuma solicitacao encontrada</p>
-          </div>
-        ) : (
-          <div className="card">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-3 px-3 font-medium text-gray-600 dark:text-gray-400">Usuario</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-600 dark:text-gray-400">Assunto</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-600 dark:text-gray-400">Categoria</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-600 dark:text-gray-400">Status</th>
-                    <th className="text-left py-3 px-3 font-medium text-gray-600 dark:text-gray-400">Data</th>
-                    <th className="text-right py-3 px-3 font-medium text-gray-600 dark:text-gray-400">Acoes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTickets.map((ticket) => (
-                    <tr key={ticket.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center text-white text-xs font-medium">
-                            {ticket.user?.name?.charAt(0).toUpperCase() || '?'}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-gray-100">{ticket.user?.name || 'Desconhecido'}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{ticket.user?.email || ''}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 max-w-xs">
-                        <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{ticket.subject}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{ticket.message}</p>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                          {categoryLabels[ticket.category] || ticket.category}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[ticket.status] || statusColors.open}`}>
-                          {statusLabels[ticket.status] || ticket.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-gray-600 dark:text-gray-400">
-                        {safeFormatDate(ticket.createdAt)}
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="flex items-center justify-end gap-1">
-                          {respondingTicket?.id === ticket.id ? (
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                className="input w-48"
-                                placeholder="Sua resposta..."
-                                value={responseMessage}
-                                onChange={(e) => setResponseMessage(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleHelpResponse(ticket.id)}
-                              />
-                              <button
-                                onClick={() => handleHelpResponse(ticket.id)}
-                                disabled={actionLoading === `help-response-${ticket.id}`}
-                                className="p-1.5 rounded-lg bg-primary text-white hover:bg-blue-700 disabled:opacity-50"
-                              >
-                                <Check size={14} />
-                              </button>
-                              <button
-                                onClick={() => { setRespondingTicket(null); setResponseMessage(''); }}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setRespondingTicket(ticket)}
-                              disabled={actionLoading === `help-response-${ticket.id}`}
-                              className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors"
-                              title="Responder"
-                            >
-                              <Mail size={16} />
-                            </button>
-                          )}
-                          <select
-                            className="input w-auto text-xs py-1 px-2"
-                            value={ticket.status}
-                            onChange={(e) => handleHelpStatusChange(ticket.id, e.target.value)}
-                            disabled={actionLoading === `help-status-${ticket.id}`}
-                          >
-                            <option value="open">Aberto</option>
-                            <option value="in_progress">Em andamento</option>
-                            <option value="resolved">Resolvido</option>
-                            <option value="closed">Fechado</option>
-                          </select>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   function renderReport() {
     if (reportLoading) {
@@ -2547,7 +2331,7 @@ export function Admin() {
           ) : (
             <div className="space-y-3">
               {approvedAdmins.map((a) => {
-                const isSuper = a.email === SUPER_ADMIN_EMAIL;
+                const isSuper = a.email === user?.email;
                 return (
                 <div key={a.id} className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
                   <div>
@@ -2965,7 +2749,7 @@ export function Admin() {
                     Ao sair, voce sera desconectado e precisara fazer login novamente.
                   </p>
                   <button
-                    onClick={() => { logout(); window.location.href = '/login'; }}
+                    onClick={async () => { await logout(); window.location.href = '/login'; }}
                     className="btn-danger flex items-center gap-2"
                   >
                     <LogOut size={18} /> Sair da conta

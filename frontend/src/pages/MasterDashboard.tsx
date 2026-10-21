@@ -126,7 +126,7 @@ export function MasterDashboard() {
       const url = window.URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `workspace-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      { const d = new Date(); link.download = `workspace-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.xlsx`; }
       document.body.appendChild(link);
       link.click();
       link.remove();

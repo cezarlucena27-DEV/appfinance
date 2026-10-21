@@ -20,7 +20,6 @@ import {
   BarChart3,
   History,
   UserCog,
-  MessageSquare,
   Lock,
   Banknote,
   Bell,
@@ -53,7 +52,6 @@ const adminNavItems = [
   { path: '/admin?tab=budgets', label: 'Orcamentos', icon: PieChart },
   { path: '/admin?tab=goals', label: 'Metas', icon: Target },
   { path: '/admin?tab=logs', label: 'Auditoria', icon: History },
-  { path: '/admin?tab=help', label: 'Suporte', icon: MessageSquare },
   { path: '/admin?tab=admins', label: 'Gerenciar Admins', icon: UserCog },
   { path: '/admin?tab=configs', label: 'Configuracoes', icon: Settings },
 ];
@@ -81,7 +79,7 @@ export function Layout() {
 
   const getNavItems = () => {
     if (isAdmin) {
-      const isSuper = user?.email === 'cezar.lucena27@gmail.com';
+      const isSuper = !!user?.isSuperAdmin;
       let allowedPanels: string[] = [];
       try {
         if (isSuper) {
@@ -115,8 +113,8 @@ export function Layout() {
 
   const navItems = getNavItems();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

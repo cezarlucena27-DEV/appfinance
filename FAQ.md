@@ -302,8 +302,8 @@ Configurações → Assinatura → "Atualizar método de pagamento" → novo che
 ### **Meus dados são seguros?**
 - **Criptografia**: TLS 1.3 (transporte) + AES-256 (backup)
 - **Senhas**: Hash bcrypt (nunca armazenamos senha em texto)
-- **Autenticação**: JWT (access + refresh tokens), expiração curta
-- **Banco**: PostgreSQL com prepared statements (previne SQL injection)
+- **Autenticação**: JWT (access 15min + refresh 7d em cookie httpOnly), revogação por sessão
+- **Banco**: MySQL com prepared statements via Prisma (previne SQL injection)
 - **LGPD**: Conforme Lei Geral de Proteção de Dados (Brasil)
 
 ### **Vocês vendem meus dados?**

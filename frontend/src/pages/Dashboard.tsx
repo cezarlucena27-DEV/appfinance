@@ -48,7 +48,10 @@ export function Dashboard() {
 
   useEffect(() => {
     fetchAccounts();
-    fetchTransactions({ startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(), endDate: new Date().toISOString() });
+    const now = new Date();
+    const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    fetchTransactions({ startDate: firstOfMonth, endDate: today });
     fetchSummary();
     fetchBudgets();
     fetchGoals();

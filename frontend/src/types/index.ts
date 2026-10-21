@@ -10,6 +10,7 @@ export interface User {
     name?: string;
     plan?: string;
   };
+  isSuperAdmin?: boolean;
   isAdminApproved?: boolean;
   approvedBy?: string;
   adminPanels?: string;
@@ -189,16 +190,4 @@ export interface Subscription {
   plan?: Plan;
 }
 
-export interface HelpTicket {
-  id: string;
-  userId: string;
-  user?: { id: string; name: string; email: string };
-  subject: string;
-  message: string;
-  category: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
-  createdAt: string;
-  updatedAt: string;
-  adminResponse?: string;
-  respondedAt?: string;
-}
+

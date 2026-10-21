@@ -8,8 +8,10 @@ import { join } from 'path';
 import { AuditService } from './audit.service';
 import { OnlineTracker } from './online-tracker.service';
 import { buildExcel } from '../../common/utils/excel.util';
+import { getSuperAdminEmail } from '../../common/security.config';
+import { parseDateOnly } from '../../common/date.util';
+import { moneyNumber } from '../../common/money';
 
-export const SUPER_ADMIN_EMAIL = 'cezar.lucena27@gmail.com';
 export const ADMIN_PANELS = ['overview', 'users', 'report', 'transactions', 'accounts', 'cards', 'categories', 'budgets', 'goals', 'logs', 'configs'];
 
 @Injectable()
@@ -21,23 +23,22 @@ export class AdminService {
     private onlineTracker: OnlineTracker,
   ) {}
 
-  async login(key: string) {
-    if (key !== (process.env.ADMIN_KEY || 'admin-financeapp-2026')) {
-      throw new UnauthorizedException('Chave de administracao invalida');
-    }
-    const token = this.jwtService.sign(
-      { sub: 'admin', globalRole: 'platform_admin' },
-      { expiresIn: '24h' },
-    );
-    return { accessToken: token };
+  // Bloqueia qualquer acao sobre o super admin por quem nao seja o proprio
+  // super admin. O ator e o proprio super admin quando seu id ou email batem.
+  private assertActorIsSuperAdmin(targetEmail: string, actor: { id?: string; email?: string }) {
+    const superAdminEmail = getSuperAdminEmail();
+    if (!superAdminEmail || targetEmail.toLowerCase() !== superAdminEmail) return;
+    const actorEmail = (actor?.email || '').toLowerCase();
+    if (actorEmail === superAdminEmail) return;
+    throw new ForbiddenException('Somente o super admin pode gerenciar a propria conta');
   }
 
-  async verify(token: string) {
+  private async logAudit(actorId: string | undefined, action: string, entity: string, entityId: string, oldValues: unknown, newValues: unknown) {
+    if (!actorId) return;
     try {
-      this.jwtService.verify(token);
-      return { valid: true };
-    } catch {
-      return { valid: false };
+      await this.auditService.log(actorId, action, entity, entityId, oldValues, newValues);
+    } catch (e) {
+      console.error('[audit] falha ao registrar log de admin:', e instanceof Error ? e.message : e);
     }
   }
 
@@ -114,8 +115,8 @@ export class AdminService {
       orderBy: { date: 'desc' },
     });
 
-    const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + moneyNumber(t.amount), 0);
+    const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + moneyNumber(t.amount), 0);
 
     const groupByCategory = (type: string) => {
       const map = new Map<string, { category: string; color: string; total: number; count: number }>();
@@ -124,7 +125,7 @@ export class AdminService {
         const name = t.category?.name || 'Sem categoria';
         const color = t.category?.color || '#64748B';
         const entry = map.get(name) || { category: name, color, total: 0, count: 0 };
-        entry.total += t.amount;
+        entry.total += moneyNumber(t.amount);
         entry.count += 1;
         map.set(name, entry);
       }
@@ -171,8 +172,8 @@ export class AdminService {
     for (const t of transactions) {
       const key = `${t.date.getFullYear()}-${String(t.date.getMonth() + 1).padStart(2, '0')}`;
       const entry = byMonth.get(key) || { income: 0, expenses: 0 };
-      if (t.type === 'income') entry.income += t.amount;
-      else if (t.type === 'expense') entry.expenses += t.amount;
+      if (t.type === 'income') entry.income += moneyNumber(t.amount);
+      else if (t.type === 'expense') entry.expenses += moneyNumber(t.amount);
       byMonth.set(key, entry);
     }
 
@@ -232,9 +233,9 @@ export class AdminService {
 
     return {
       user, totalTransactions,
-      totalIncome: totalIncome._sum.amount || 0,
-      totalExpenses: totalExpenses._sum.amount || 0,
-      balance: (totalIncome._sum.amount || 0) - (totalExpenses._sum.amount || 0),
+      totalIncome: moneyNumber(totalIncome._sum.amount),
+      totalExpenses: moneyNumber(totalExpenses._sum.amount),
+      balance: moneyNumber(totalIncome._sum.amount) - moneyNumber(totalExpenses._sum.amount),
       accounts, cards, budgets, goals,
     };
   }
@@ -295,11 +296,12 @@ export class AdminService {
     });
   }
 
-  async updateUserRole(userId: string, role: string) {
+  async updateUserRole(userId: string, role: string, actor: { id?: string; email?: string } = {}) {
     const validRoles = ['master', 'admin', 'member'];
     if (!validRoles.includes(role)) throw new BadRequestException('Funcao invalida');
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
+    this.assertActorIsSuperAdmin(user.email, actor);
 
     const membership = await this.prisma.workspaceMember.findFirst({ where: { userId } });
     if (membership) {
@@ -308,19 +310,60 @@ export class AdminService {
     return { id: userId, role };
   }
 
-  async updateUser(userId: string, data: { name?: string; email?: string; globalRole?: string; isActive?: boolean }) {
+  async updateUser(userId: string, data: { name?: string; email?: string; globalRole?: string; isActive?: boolean }, actor: { id?: string; email?: string } = {}) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
+    this.assertActorIsSuperAdmin(user.email, actor);
+    if (user.globalRole === 'platform_admin') {
+      const targetIsSuper = !!getSuperAdminEmail() && user.email.toLowerCase() === getSuperAdminEmail();
+      if (!targetIsSuper) {
+        throw new ForbiddenException('Somente o super admin pode editar administradores da plataforma');
+      }
+    }
 
-    if (data.email && data.email !== user.email) {
-      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
-      if (existing) throw new BadRequestException('Email ja em uso');
+    const update: { name?: string; email?: string; globalRole?: string; isActive?: boolean; isAdminApproved?: boolean; adminPanels?: string } = {};
+
+    if (data.name !== undefined) {
+      const name = data.name.trim();
+      if (name.length < 2) throw new BadRequestException('Nome invalido');
+      update.name = name;
+    }
+
+    if (data.email !== undefined) {
+      const email = data.email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Email invalido');
+      const roleSuperAdminEmail = getSuperAdminEmail();
+      if (roleSuperAdminEmail && user.email.toLowerCase() === roleSuperAdminEmail && email !== roleSuperAdminEmail) {
+        throw new BadRequestException('Nao e possivel alterar o email do super admin');
+      }
+      if (email !== user.email) {
+        const existing = await this.prisma.user.findUnique({ where: { email } });
+        if (existing) throw new BadRequestException('Email ja em uso');
+      }
+      update.email = email;
+    }
+
+    if (data.isActive !== undefined) update.isActive = Boolean(data.isActive);
+
+    if (data.globalRole !== undefined) {
+      const roleSuperAdminEmail = getSuperAdminEmail();
+      if (roleSuperAdminEmail && user.email.toLowerCase() === roleSuperAdminEmail && data.globalRole !== 'platform_admin') {
+        throw new BadRequestException('Nao e possivel rebaixar o super admin');
+      }
+      if (!['regular', 'platform_admin'].includes(data.globalRole)) {
+        throw new BadRequestException('Papel global invalido');
+      }
+      update.globalRole = data.globalRole;
+      if (data.globalRole === 'platform_admin') {
+        update.isAdminApproved = false;
+        update.adminPanels = '[]';
+      }
     }
 
     return this.prisma.user.update({
       where: { id: userId },
-      data,
-      select: { id: true, name: true, email: true, globalRole: true, isActive: true },
+      data: update,
+      select: { id: true, name: true, email: true, globalRole: true, isActive: true, isAdminApproved: true, adminPanels: true },
     });
   }
 
@@ -346,8 +389,9 @@ export class AdminService {
     });
   }
 
-  async createAdmin(data: { name: string; email: string }, approverEmail: string) {
-    if (approverEmail !== SUPER_ADMIN_EMAIL) {
+  async createAdmin(data: { name: string; email: string }, actorEmail: string, actorId?: string) {
+    const superAdminEmail = getSuperAdminEmail();
+    if (!superAdminEmail || (actorEmail || '').toLowerCase() !== superAdminEmail) {
       throw new ForbiddenException('Apenas o super admin pode incluir administradores');
     }
     const email = data.email.trim().toLowerCase();
@@ -364,8 +408,8 @@ export class AdminService {
         passwordHash,
         globalRole: 'platform_admin',
         isAdminApproved: true,
-        approvedBy: approverEmail,
-        adminPanels: 'all',
+        approvedBy: actorEmail,
+        adminPanels: JSON.stringify(ADMIN_PANELS),
         onboardingCompleted: true,
         defaultsCreated: true,
       },
@@ -380,31 +424,32 @@ export class AdminService {
     await this.prisma.workspaceMember.create({
       data: { userId: user.id, workspaceId: workspace.id, role: 'master' },
     });
-    await this.auditService.log(user.id, 'create', 'admin', user.id, null, { email, name: data.name.trim() });
+    await this.logAudit(actorId, 'create', 'admin', user.id, null, { email, name: data.name.trim() });
 
     return { id: user.id, name: user.name, email: user.email, tempPassword };
   }
 
-  async updateAdminPanels(userId: string, panels: string[], actorEmail: string) {
-    if (actorEmail !== SUPER_ADMIN_EMAIL) {
+  async updateAdminPanels(userId: string, panels: string[], actorEmail: string, actorId?: string) {
+    const superAdminEmail = getSuperAdminEmail();
+    if (!superAdminEmail || (actorEmail || '').toLowerCase() !== superAdminEmail) {
       throw new ForbiddenException('Apenas o super admin pode gerenciar os paineis');
     }
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
-    if (user.email === SUPER_ADMIN_EMAIL) {
+    if (user.email === superAdminEmail) {
       throw new BadRequestException('Nao e possivel restringir o super admin');
     }
     const valid = new Set(ADMIN_PANELS);
     const invalid = panels.filter((p) => !valid.has(p));
     if (invalid.length) throw new BadRequestException(`Painel invalido: ${invalid.join(', ')}`);
 
-    const next = panels.length === valid.size ? 'all' : JSON.stringify(panels);
+    const next = JSON.stringify(panels);
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { adminPanels: next },
       select: { id: true, name: true, email: true, adminPanels: true },
     });
-    await this.auditService.log(userId, 'update', 'admin', userId, { adminPanels: user.adminPanels }, { adminPanels: next });
+    await this.logAudit(actorId, 'update', 'admin', userId, { adminPanels: user.adminPanels }, { adminPanels: next });
 
     return updated;
   }
@@ -436,7 +481,9 @@ export class AdminService {
   async revokeAdmin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
-    if (user.email === 'cezar.lucena27@gmail.com') throw new BadRequestException('Nao e possivel revogar o super admin');
+    if (getSuperAdminEmail() && user.email === getSuperAdminEmail()) {
+      throw new BadRequestException('Nao e possivel revogar o super admin');
+    }
 
     return this.prisma.user.update({
       where: { id: userId },
@@ -445,9 +492,13 @@ export class AdminService {
     });
   }
 
-  async toggleUserActive(userId: string, message?: string) {
+  async toggleUserActive(userId: string, message?: string, actor: { id?: string; email?: string } = {}) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
+    this.assertActorIsSuperAdmin(user.email, actor);
+    if (user.globalRole === 'platform_admin' && !(getSuperAdminEmail() && user.email.toLowerCase() === getSuperAdminEmail())) {
+      throw new ForbiddenException('Somente o super admin pode ativar/desativar administradores da plataforma');
+    }
     const nextActive = !user.isActive;
     return this.prisma.user.update({
       where: { id: userId },
@@ -456,12 +507,19 @@ export class AdminService {
     });
   }
 
-  async resetUserPassword(userId: string) {
+  async resetUserPassword(userId: string, actor: { id?: string; email?: string } = {}) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
-    const tempPassword = randomBytes(8).toString('hex');
+    this.assertActorIsSuperAdmin(user.email, actor);
+    if (user.globalRole === 'platform_admin' && !(getSuperAdminEmail() && user.email.toLowerCase() === getSuperAdminEmail())) {
+      throw new ForbiddenException('Somente o super admin pode redefinir a senha de administradores da plataforma');
+    }
+    const tempPassword = randomBytes(12).toString('base64url') + 'a1';
     const passwordHash = await bcrypt.hash(tempPassword, 12);
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
+    });
     return { tempPassword, email: user.email };
   }
 
@@ -470,23 +528,40 @@ export class AdminService {
     if (!user) throw new NotFoundException('Usuario nao encontrado');
     if (user.globalRole === 'platform_admin') throw new BadRequestException('Nao e possivel excluir um admin da plataforma');
 
-    await this.prisma.auditLog.deleteMany({ where: { userId } });
-    await this.prisma.transaction.deleteMany({ where: { userId } });
-    await this.prisma.budget.deleteMany({ where: { userId } });
-    await this.prisma.goal.deleteMany({ where: { userId } });
-    await this.prisma.card.deleteMany({ where: { userId } });
-    await this.prisma.category.deleteMany({ where: { userId } });
-    await this.prisma.account.deleteMany({ where: { userId } });
-    await this.prisma.subscription.deleteMany({ where: { userId } });
-    const ownedWorkspaces = await this.prisma.workspace.findMany({ where: { ownerId: userId }, select: { id: true } });
-    for (const ws of ownedWorkspaces) {
-      await this.prisma.subscription.deleteMany({ where: { workspaceId: ws.id } });
-      await this.prisma.workspaceMember.deleteMany({ where: { workspaceId: ws.id } });
-      await this.prisma.workspace.delete({ where: { id: ws.id } });
-    }
-    await this.prisma.user.updateMany({ where: { createdById: userId }, data: { createdById: null } });
-    await this.prisma.workspaceMember.deleteMany({ where: { userId } });
-    await this.prisma.user.delete({ where: { id: userId } });
+    await this.prisma.$transaction(async (tx) => {
+      const accounts = await tx.account.findMany({ where: { userId }, select: { id: true } });
+      const accountIds = accounts.map((account) => account.id);
+      const categories = await tx.category.findMany({ where: { userId }, select: { id: true } });
+      const categoryIds = categories.map((category) => category.id);
+      const ownedWorkspaces = await tx.workspace.findMany({ where: { ownerId: userId }, select: { id: true } });
+      const workspaceIds = ownedWorkspaces.map((workspace) => workspace.id);
+
+      await tx.accountShare.deleteMany({
+        where: { OR: [{ userId }, { accountId: { in: accountIds } }] },
+      });
+      await tx.transaction.deleteMany({
+        where: { OR: [{ userId }, { accountId: { in: accountIds } }] },
+      });
+      await tx.budget.updateMany({
+        where: { userId: { not: userId }, categoryId: { in: categoryIds } },
+        data: { categoryId: null },
+      });
+      await tx.budget.deleteMany({ where: { userId } });
+      await tx.goal.deleteMany({ where: { userId } });
+      await tx.card.deleteMany({ where: { userId } });
+      await tx.auditLog.deleteMany({ where: { userId } });
+      await tx.paymentHistory.deleteMany({ where: { userId } });
+      await tx.reminderView.deleteMany({ where: { userId } });
+      await tx.category.deleteMany({ where: { userId } });
+      await tx.account.deleteMany({ where: { userId } });
+      await tx.subscription.deleteMany({ where: { userId } });
+      await tx.subscription.deleteMany({ where: { workspaceId: { in: workspaceIds } } });
+      await tx.workspaceMember.deleteMany({ where: { workspaceId: { in: workspaceIds } } });
+      await tx.workspace.deleteMany({ where: { id: { in: workspaceIds } } });
+      await tx.user.updateMany({ where: { createdById: userId }, data: { createdById: null } });
+      await tx.workspaceMember.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
     return { deleted: true, email: user.email };
   }
 
@@ -521,9 +596,9 @@ export class AdminService {
     const m = user.memberships[0];
     return {
       ...user, role: m?.role || 'member', workspaceId: m?.workspace?.id || '', workspace: m?.workspace || null,
-      totalIncome: totalIncome._sum.amount || 0,
-      totalExpenses: totalExpenses._sum.amount || 0,
-      balance: (totalIncome._sum.amount || 0) - (totalExpenses._sum.amount || 0),
+      totalIncome: moneyNumber(totalIncome._sum.amount),
+      totalExpenses: moneyNumber(totalExpenses._sum.amount),
+      balance: moneyNumber(totalIncome._sum.amount) - moneyNumber(totalExpenses._sum.amount),
       recentTransactions, accounts,
     };
   }
@@ -591,7 +666,11 @@ export class AdminService {
     return Array.from(latestByUser.values());
   }
 
-  async blockUserForPayment(userId: string, reason?: string, adminEmail?: string) {
+  async blockUserForPayment(userId: string, reason?: string, actorEmail?: string, actorId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (!user) throw new NotFoundException('Usuario nao encontrado');
+    this.assertActorIsSuperAdmin(user.email, { id: actorId, email: actorEmail });
+
     const subscription = await this.prisma.subscription.findUnique({ where: { userId } });
     if (!subscription) throw new NotFoundException('Assinatura nao encontrada para este usuario');
 
@@ -599,49 +678,87 @@ export class AdminService {
       where: { userId },
       data: { blocked: true, blockReason: reason?.trim() || 'Falta de pagamento' },
     });
-    try { await this.auditService.log(adminEmail || 'admin', 'update', 'subscription', subscription.id, null, { blocked: true }); } catch {}
+    await this.logAudit(actorId, 'update', 'subscription', subscription.id, null, { blocked: true });
     return updated;
   }
 
-  async unblockUserForPayment(userId: string, accessUntil?: string, adminEmail?: string) {
+  async unblockUserForPayment(userId: string, accessUntil?: string, actorEmail?: string, actorId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (!user) throw new NotFoundException('Usuario nao encontrado');
+    this.assertActorIsSuperAdmin(user.email, { id: actorId, email: actorEmail });
+
     const subscription = await this.prisma.subscription.findUnique({ where: { userId } });
     if (!subscription) throw new NotFoundException('Assinatura nao encontrada para este usuario');
 
-    const until = accessUntil ? new Date(accessUntil) : null;
+    let until: Date | null = null;
+    if (accessUntil) {
+      until = parseDateOnly(accessUntil);
+      if (!until) throw new BadRequestException('Data de acesso invalida');
+    }
     const updated = await this.prisma.subscription.update({
       where: { userId },
       data: { blocked: false, blockReason: null, accessUntil: until },
     });
-    try { await this.auditService.log(adminEmail || 'admin', 'update', 'subscription', subscription.id, null, { blocked: false, accessUntil: until }); } catch {}
+    await this.logAudit(actorId, 'update', 'subscription', subscription.id, null, { blocked: false, accessUntil: until });
     return updated;
   }
 
-  async registerPayment(userId: string, data: { amount?: number; dueDate: string; notes?: string }, adminEmail?: string) {
+  async registerPayment(userId: string, data: { amount?: number; dueDate: string; notes?: string }, actorEmail?: string, actorId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (!user) throw new NotFoundException('Usuario nao encontrado');
+    this.assertActorIsSuperAdmin(user.email, { id: actorId, email: actorEmail });
+
     const subscription = await this.prisma.subscription.findUnique({ where: { userId } });
     if (!subscription) throw new NotFoundException('Assinatura nao encontrada para este usuario');
 
-    const dueDate = new Date(data.dueDate);
-    if (isNaN(dueDate.getTime())) throw new BadRequestException('Data de vencimento invalida');
+    let dueDate: Date | null;
+    try {
+      dueDate = parseDateOnly(data.dueDate);
+    } catch {
+      throw new BadRequestException('Data de vencimento invalida');
+    }
+    if (!dueDate) throw new BadRequestException('Data de vencimento invalida');
 
-    const payment = await this.prisma.paymentHistory.create({
-      data: {
-        userId,
-        planId: subscription.planId,
-        amount: data.amount ?? subscription.value ?? 0,
-        status: 'paid',
-        dueDate,
-        paidAt: new Date(),
-        notes: data.notes?.trim() || null,
-        registeredBy: adminEmail || 'admin',
-      },
+    const plan = subscription.planId
+      ? await this.prisma.plan.findUnique({ where: { id: subscription.planId } })
+      : null;
+
+    const payment = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.paymentHistory.create({
+        data: {
+          userId,
+          planId: subscription.planId,
+          amount: data.amount ?? subscription.value ?? 0,
+          status: 'paid',
+          dueDate: dueDate as Date,
+          paidAt: new Date(),
+          notes: data.notes?.trim() || null,
+          registeredBy: actorEmail || 'admin',
+        },
+      });
+
+      await tx.subscription.update({
+        where: { userId },
+        data: {
+          blocked: false,
+          blockReason: null,
+          status: 'active',
+          accessUntil: dueDate as Date,
+          nextDueDate: dueDate as Date,
+        },
+      });
+
+      if (plan) {
+        await tx.workspace.update({
+          where: { id: subscription.workspaceId },
+          data: { plan: plan.id },
+        });
+      }
+
+      return created;
     });
 
-    await this.prisma.subscription.update({
-      where: { userId },
-      data: { blocked: false, blockReason: null, accessUntil: dueDate, nextDueDate: dueDate },
-    });
-
-    try { await this.auditService.log(adminEmail || 'admin', 'create', 'payment', payment.id, null, { amount: payment.amount, dueDate }); } catch {}
+    await this.logAudit(actorId, 'create', 'payment', payment.id, null, { amount: payment.amount, dueDate });
     return payment;
   }
 
@@ -665,6 +782,8 @@ export class AdminService {
   }
 
   async updateAsaasConfig(data: { apiKey?: string; webhookUrl?: string; environment?: string; pixKey?: string }) {
+    // Configuracoes de pagamento so podem ser alteradas pelo super admin.
+    throw new ForbiddenException('Apenas o super admin pode alterar configuracoes de pagamento');
     const configPath = this.getConfigPath();
     let existing: any = {};
     if (existsSync(configPath)) {
@@ -737,8 +856,8 @@ export class AdminService {
       orderBy: { date: 'desc' },
     });
 
-    const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + moneyNumber(t.amount), 0);
+    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + moneyNumber(t.amount), 0);
 
     return {
       transactions,
@@ -828,7 +947,7 @@ export class AdminService {
           type: t.type === 'income' ? 'Receita' : 'Despesa',
           category: t.category?.name || 'Sem categoria',
           description: t.description || '',
-          amount: t.type === 'income' ? t.amount : -t.amount,
+          amount: t.type === 'income' ? moneyNumber(t.amount) : -moneyNumber(t.amount),
           account: t.account?.name || 'Sem conta',
           user: t.user?.name || t.user?.email || '',
         })),
@@ -845,7 +964,7 @@ export class AdminService {
           name: a.name,
           owner: a.user?.name || a.user?.email || '',
           type: a.type,
-          balance: a.currentBalance,
+          balance: moneyNumber(a.currentBalance),
         })),
       },
       {
@@ -861,7 +980,7 @@ export class AdminService {
           name: c.name,
           brand: c.brand,
           lastDigits: c.lastDigits,
-          limit: c.limit,
+          limit: moneyNumber(c.limit),
           owner: c.user?.name || c.user?.email || '',
         })),
       },
@@ -875,7 +994,7 @@ export class AdminService {
         ],
         rows: budgets.map(b => ({
           category: b.category?.name || 'Sem categoria',
-          limit: b.limitAmount,
+          limit: moneyNumber(b.limitAmount),
           period: `${months[(b.month || 1) - 1]} ${b.year}`,
           user: b.user?.name || b.user?.email || '',
         })),
@@ -890,8 +1009,8 @@ export class AdminService {
         ],
         rows: goals.map(g => ({
           name: g.name,
-          current: g.currentAmount,
-          target: g.targetAmount,
+          current: moneyNumber(g.currentAmount),
+          target: moneyNumber(g.targetAmount),
           user: g.user?.name || g.user?.email || '',
         })),
       },

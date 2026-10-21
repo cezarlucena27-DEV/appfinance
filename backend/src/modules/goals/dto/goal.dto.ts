@@ -1,4 +1,6 @@
-import { IsString, IsNumber, IsOptional, IsDateString, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsDateString, Min, IsIn } from 'class-validator';
+
+const GOAL_STATUS = ['active', 'completed', 'cancelled', 'ativa', 'concluida', 'cancelada'];
 
 export class CreateGoalDto {
   @IsString()
@@ -51,6 +53,12 @@ export class UpdateGoalDto {
   color?: string;
 
   @IsString()
+  @IsIn(GOAL_STATUS)
   @IsOptional()
   status?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  currentAmount?: number;
 }

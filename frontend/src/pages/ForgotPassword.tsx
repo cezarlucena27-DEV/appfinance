@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowLeft, CheckCircle, AlertTriangle, KeyRound } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import api from '../lib/api';
 
 export function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{ message: string } | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,34 +23,12 @@ export function ForgotPassword() {
     setLoading(false);
   };
 
-  if (result?.isMaster) {
+  if (result) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
         <div className="w-full max-w-md text-center">
           <CheckCircle size={64} className="mx-auto mb-4 text-success" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Senha redefinida</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">{result.message}</p>
-          <div className="card mb-4">
-            <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 mb-2">
-              <KeyRound size={16} />
-              <span className="text-sm">Sua nova senha</span>
-            </div>
-            <p className="text-2xl font-bold text-primary break-all">{result.tempPassword}</p>
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Copie a senha e use para entrar. Recomendamos altera-la depois em Configuracoes.</p>
-          <Link to="/login" className="btn-primary inline-block">Ir para o login</Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (result) {
-    const isError = !result.registered || !result.active;
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
-        <div className="w-full max-w-md text-center">
-          <AlertTriangle size={64} className={`mx-auto mb-4 ${isError ? 'text-danger' : 'text-warning'}`} />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">{result.registered ? (result.active === false ? 'Conta desativada' : 'Conta comum') : 'Email nao encontrado'}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Solicitacao registrada</h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">{result.message}</p>
           <Link to="/login" className="text-primary font-medium hover:underline">Voltar ao login</Link>
         </div>

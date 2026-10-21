@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBudgetDto, UpdateBudgetDto } from './dto/budget.dto';
+import { Prisma } from '@prisma/client';
+import { getPlanLimits } from '../../common/plan-limits';
+import { moneyNumber } from '../../common/money';
 
 @Injectable()
 export class BudgetsService {
@@ -32,16 +35,17 @@ export class BudgetsService {
       where: { userId },
     });
 
-    const limits = { free: 3, premium: 999999, pro: 999999 };
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { userId },
       include: { workspace: true },
     });
-    const plan = (membership?.workspace?.plan || 'free') as keyof typeof limits;
-    
-    if (budgetCount >= limits[plan]) {
+    const limits = getPlanLimits(membership?.workspace?.plan);
+
+    if (budgetCount >= limits.budgets) {
       throw new ForbiddenException('Limite de orcamentos atingido para o seu plano');
     }
+
+    await this.assertOwnedCategory(userId, dto.categoryId);
 
     const existing = await this.prisma.budget.findFirst({
       where: {
@@ -62,7 +66,7 @@ export class BudgetsService {
         categoryId: dto.categoryId,
         month: dto.month,
         year: dto.year,
-        limitAmount: dto.limitAmount,
+        limitAmount: new Prisma.Decimal(dto.limitAmount),
       },
       include: { category: true },
     });
@@ -70,11 +74,29 @@ export class BudgetsService {
 
   async update(id: string, userId: string, dto: UpdateBudgetDto) {
     await this.findOne(id, userId);
+    if (dto.categoryId !== undefined) await this.assertOwnedCategory(userId, dto.categoryId);
+
+    const data: Prisma.BudgetUpdateInput = {};
+    if (dto.categoryId !== undefined) {
+      data.category = dto.categoryId ? { connect: { id: dto.categoryId } } : { disconnect: true };
+    }
+    if (dto.month !== undefined) data.month = dto.month;
+    if (dto.year !== undefined) data.year = dto.year;
+    if (dto.limitAmount !== undefined) data.limitAmount = new Prisma.Decimal(dto.limitAmount);
+
     return this.prisma.budget.update({
       where: { id },
-      data: dto,
+      data,
       include: { category: true },
     });
+  }
+
+  private async assertOwnedCategory(userId: string, categoryId?: string) {
+    if (!categoryId) return;
+    const category = await this.prisma.category.findFirst({
+      where: { id: categoryId, OR: [{ userId }, { userId: null }] },
+    });
+    if (!category) throw new ForbiddenException('Categoria nao pertence a este usuario');
   }
 
   async remove(id: string, userId: string) {
@@ -104,13 +126,14 @@ export class BudgetsService {
           type: 'expense',
           date: {
             gte: new Date(year, month - 1, 1),
-            lte: new Date(year, month, 0),
+            lte: new Date(year, month, 0, 23, 59, 59, 999),
           },
         },
       });
 
-      const spent = transactions.reduce((sum, t) => sum + t.amount, 0);
-      const percentage = (spent / budget.limitAmount) * 100;
+      const spent = transactions.reduce((sum, t) => sum + moneyNumber(t.amount), 0);
+      const limit = moneyNumber(budget.limitAmount);
+      const percentage = limit > 0 ? (spent / limit) * 100 : 0;
 
       results.push({
         ...budget,

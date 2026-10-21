@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAccountDto, UpdateAccountDto } from './dto/account.dto';
 import { buildExcel } from '../../common/utils/excel.util';
+import { getPlanLimits } from '../../common/plan-limits';
+import { money, moneyNumber } from '../../common/money';
 
 @Injectable()
 export class AccountsService {
@@ -28,36 +30,31 @@ export class AccountsService {
     });
 
     let shared: any[] = [];
-    let mirrored: any[] = [];
     let members: any[] = [];
+    let workspaceMemberIds: string[] = [];
     if (membership) {
       members = membership.workspace.members;
+      workspaceMemberIds = membership.workspace.members.map((member) => member.userId);
       shared = await this.prisma.account.findMany({
-        where: { shares: { some: { userId } }, NOT: { userId } },
+        where: {
+          shares: { some: { userId } },
+          NOT: { userId },
+          user: { memberships: { some: { workspaceId: membership.workspaceId } } },
+        },
         orderBy: { createdAt: 'desc' },
         include: { shares: { include: { user: { select: { id: true, name: true, email: true } } } } },
       });
-
-      const sharesByMe = await this.prisma.accountShare.findMany({
-        where: { account: { userId } },
-        select: { userId: true },
-      });
-      const partnerIds = [...new Set(sharesByMe.map(s => s.userId))];
-      if (partnerIds.length) {
-        mirrored = await this.prisma.account.findMany({
-          where: { userId: { in: partnerIds }, NOT: { userId } },
-          orderBy: { createdAt: 'desc' },
-          include: { shares: { include: { user: { select: { id: true, name: true, email: true } } } } },
-        });
-      }
     }
 
-    const all = [...new Map([...own, ...shared, ...mirrored].map(a => [a.id, a])).values()];
+    const all = [...new Map([...own, ...shared].map(a => [a.id, a])).values()];
     const allIds = all.map(a => a.id);
 
     const allShares = allIds.length
       ? await this.prisma.accountShare.findMany({
-          where: { accountId: { in: allIds } },
+          where: {
+            accountId: { in: allIds },
+            ...(workspaceMemberIds.length ? { userId: { in: workspaceMemberIds } } : {}),
+          },
           select: { accountId: true, userId: true },
         })
       : [];
@@ -102,10 +99,10 @@ export class AccountsService {
       const group = groupOf(account.id);
       const groupAccounts = group.map(gid => map.get(gid)!);
       const isGroup = group.length > 1 || sharedWith.length > 0;
-      const groupBalance = groupAccounts.reduce((sum, a) => sum + a.currentBalance, 0);
+      const groupBalance = groupAccounts.reduce((sum, a) => sum + moneyNumber(a.currentBalance), 0);
       const linkedWith = groupAccounts
         .filter(a => a.id !== account.id)
-        .map(a => ({ id: a.id, name: a.name, color: a.color, currentBalance: a.currentBalance }));
+        .map(a => ({ id: a.id, name: a.name, color: a.color, currentBalance: moneyNumber(a.currentBalance) }));
 
       if (!isGroup) return account;
 
@@ -119,14 +116,14 @@ export class AccountsService {
         const userTxns = groupTxns.filter(t => t.userId === m.userId);
         const income = userTxns
           .filter(t => t.type === 'income')
-          .reduce((sum, t) => sum + t.amount, 0);
+          .reduce((sum, t) => sum + moneyNumber(t.amount), 0);
         const expenses = userTxns
           .filter(t => t.type === 'expense')
-          .reduce((sum, t) => sum + t.amount, 0);
+          .reduce((sum, t) => sum + moneyNumber(t.amount), 0);
         const isOwner = groupAccounts.some(a => a.userId === m.userId);
         const initialShare = groupAccounts
           .filter(a => a.userId === m.userId)
-          .reduce((sum, a) => sum + a.initialBalance, 0);
+          .reduce((sum, a) => sum + moneyNumber(a.initialBalance), 0);
         return {
           id: m.userId,
           name: m.user.name,
@@ -248,8 +245,8 @@ export class AccountsService {
       }),
     ]);
 
-    const incomeSum = allTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expenseSum = allTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const incomeSum = allTransactions.filter(t => t.type === 'income').reduce((s, t) => s + moneyNumber(t.amount), 0);
+    const expenseSum = allTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + moneyNumber(t.amount), 0);
 
     const sheets = [
       {
@@ -295,7 +292,7 @@ export class AccountsService {
           name: a.name,
           owner: a.user.name || a.user.email,
           type: a.type,
-          balance: a.currentBalance,
+          balance: moneyNumber(a.currentBalance),
           transactions: a._count.transactions,
         })),
       },
@@ -326,7 +323,7 @@ export class AccountsService {
           type: t.type === 'income' ? 'Receita' : 'Despesa',
           category: t.category?.name || 'Sem categoria',
           description: t.description || '',
-          amount: t.type === 'income' ? t.amount : -t.amount,
+          amount: t.type === 'income' ? moneyNumber(t.amount) : -moneyNumber(t.amount),
           account: t.account?.name || 'Sem conta',
           user: t.user?.name || t.user?.email || '',
         })),
@@ -348,12 +345,7 @@ export class AccountsService {
 
     if (account.userId !== userId) {
       const isShared = account.shares.some(s => s.userId === userId);
-      const ownerSharedWithMe = !isShared
-        ? await this.prisma.accountShare.findFirst({
-            where: { account: { userId }, userId: account.userId },
-          })
-        : null;
-      if (!isShared && !ownerSharedWithMe) {
+      if (!isShared) {
         throw new NotFoundException('Conta nao encontrada');
       }
       const membership = await this.prisma.workspaceMember.findFirst({
@@ -372,7 +364,6 @@ export class AccountsService {
   }
 
   async create(userId: string, dto: CreateAccountDto) {
-    // Check account limit based on plan
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { userId },
       include: { workspace: true },
@@ -382,20 +373,21 @@ export class AccountsService {
       where: { userId },
     });
 
-    const limits = { free: 1, premium: 3, pro: 999999 };
-    const plan = (membership?.workspace?.plan || 'free') as keyof typeof limits;
-    
-    if (accountCount >= limits[plan]) {
+    const limits = getPlanLimits(membership?.workspace?.plan);
+
+    if (accountCount >= limits.accounts) {
       throw new ForbiddenException('Limite de contas atingido para o seu plano');
     }
+
+    const initialBalance = money(dto.initialBalance);
 
     return this.prisma.account.create({
       data: {
         userId,
-        name: dto.name,
+        name: dto.name.trim(),
         type: dto.type || 'wallet',
-        initialBalance: dto.initialBalance,
-        currentBalance: dto.initialBalance,
+        initialBalance,
+        currentBalance: initialBalance,
         icon: dto.icon || 'wallet',
         color: dto.color || '#2563EB',
         isPrimary: dto.isPrimary || false,
@@ -404,11 +396,33 @@ export class AccountsService {
   }
 
   async update(id: string, userId: string, dto: UpdateAccountDto) {
-    const account = await this.findOne(id, userId);
+    const account = await this.findOwned(id, userId);
+
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) data.name = dto.name.trim();
+    if (dto.type !== undefined) data.type = dto.type;
+    if (dto.icon !== undefined) data.icon = dto.icon;
+    if (dto.color !== undefined) data.color = dto.color;
+    if (dto.isPrimary !== undefined) data.isPrimary = dto.isPrimary;
+    if (dto.initialBalance !== undefined) {
+      const nextInitial = money(dto.initialBalance);
+      const delta = nextInitial.minus(money(account.initialBalance));
+      data.initialBalance = nextInitial;
+      data.currentBalance = money(account.currentBalance).plus(delta);
+    }
+
     return this.prisma.account.update({
       where: { id },
-      data: dto,
+      data,
     });
+  }
+
+  async findOwned(id: string, userId: string) {
+    const account = await this.prisma.account.findUnique({ where: { id } });
+    if (!account || account.userId !== userId) {
+      throw new NotFoundException('Conta nao encontrada');
+    }
+    return account;
   }
 
   async linkAccount(id: string, ownerUserId: string, targetUserId: string) {
@@ -463,8 +477,8 @@ export class AccountsService {
   }
 
   async remove(id: string, userId: string) {
-    const account = await this.findOne(id, userId);
-    
+    await this.findOwned(id, userId);
+
     const transactionCount = await this.prisma.transaction.count({
       where: { accountId: id },
     });
@@ -483,6 +497,6 @@ export class AccountsService {
       where: { userId },
     });
 
-    return accounts.reduce((total, account) => total + account.currentBalance, 0);
+    return accounts.reduce((total, account) => total + moneyNumber(account.currentBalance), 0);
   }
 }

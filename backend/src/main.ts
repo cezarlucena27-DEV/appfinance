@@ -6,6 +6,8 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 import { AuditService } from './modules/admin/audit.service';
 import { OnlineTracker } from './modules/admin/online-tracker.service';
+import { validateSecurityEnv } from './common/security.config';
+import { DecimalSerializerInterceptor } from './common/interceptors/decimal-serializer.interceptor';
 
 function loadEnvFile() {
   const candidates = [join(process.cwd(), '.env'), join(process.cwd(), '..', '.env')];
@@ -27,35 +29,47 @@ function loadEnvFile() {
 async function bootstrap() {
   loadEnvFile();
 
-  // Garante que o PrismaClient nao derrube o boot se DATABASE_URL faltar:
-  // placeholder valido so para passar na validacao; queries reais falharao
-  // por rota (visivel nos logs) em vez de derrubar todo o processo.
   if (!process.env.DATABASE_URL) {
-    console.warn('[aviso] DATABASE_URL nao definida - usando placeholder; rotas de banco vao falhar');
-    process.env.DATABASE_URL = 'mysql://placeholder:placeholder@localhost:3306/placeholder';
+    throw new Error('[config] DATABASE_URL nao definida.');
   }
 
-  // Pre-flight: valida a URL construindo um cliente descartavel. Se a env
-  // estiver malformada, substitui por placeholder para nao derrubar o
-  // processo inteiro.
-  try {
-    const { PrismaClient } = require('@prisma/client');
-    const probe = new PrismaClient();
-    void probe;
-  } catch (e) {
-    console.error(
-      '[aviso] DATABASE_URL invalida - ignorando e usando placeholder:',
-      e instanceof Error ? e.message.split('\n')[0] : e,
-    );
-    process.env.DATABASE_URL = 'mysql://placeholder:placeholder@localhost:3306/placeholder';
-  }
+  validateSecurityEnv();
 
   const app = await NestFactory.create(AppModule);
+  const server = app.getHttpAdapter().getInstance();
+  const trustProxy = Number(process.env.TRUST_PROXY ?? '0') || 0;
+  server.set('trust proxy', trustProxy);
+  if (trustProxy === 0) {
+    console.warn('[aviso] TRUST_PROXY nao definido - rate limit usa o IP do socket. Defina TRUST_PROXY=1 atras de um proxy.');
+  }
 
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const helmet = require('helmet');
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        fontSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: frontendUrl.split(',').map((u) => u.trim()),
+    origin: allowedOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   app.useGlobalPipes(new ValidationPipe({
@@ -65,6 +79,7 @@ async function bootstrap() {
   }));
 
   app.setGlobalPrefix('api');
+  app.useGlobalInterceptors(new DecimalSerializerInterceptor());
 
   const auditService = app.get(AuditService);
   const { AuditInterceptor } = await import('./common/interceptors/audit.interceptor');

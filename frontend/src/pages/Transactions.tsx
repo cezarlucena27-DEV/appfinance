@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, X, ArrowUpRight, ArrowDownRight, Trash2, Pencil, Check, AlertCircle, Filter, Tag, Calendar, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, X, ArrowUpRight, ArrowDownRight, Trash2, Pencil, Check, AlertCircle, Filter, Tag, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react';
 import api from '../lib/api';
 import { format, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+function todayISO() {
+  return format(new Date(), 'yyyy-MM-dd');
+}
+
+function dateOnly(value: string | Date) {
+  return typeof value === 'string' ? value.slice(0, 10) : format(value, 'yyyy-MM-dd');
+}
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 export function Transactions() {
@@ -30,7 +38,7 @@ export function Transactions() {
     type: 'expense',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     accountId: '',
     categoryId: '',
     dueDate: '',
@@ -72,7 +80,7 @@ export function Transactions() {
   const getTransactionStatus = (txn: any) => {
     if (txn.isPaid) return 'paid';
     if (!txn.dueDate) return 'none';
-    const due = parseISO(txn.dueDate);
+    const due = parseISO(dateOnly(txn.dueDate));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return isBefore(due, today) ? 'overdue' : 'upcoming';
@@ -105,6 +113,8 @@ export function Transactions() {
     try {
       if (editingId) {
         await api.put('/transactions/' + editingId, payload);
+        fetchTransactions();
+        fetchAccounts();
         showFeedback('success', 'Transacao atualizada com sucesso');
       } else {
         await createTransaction(payload);
@@ -126,7 +136,7 @@ export function Transactions() {
         type: 'expense',
         amount: '',
         description: '',
-        date: new Date().toISOString().split('T')[0],
+        date: todayISO(),
         accountId: '',
         categoryId: '',
         dueDate: '',
@@ -209,10 +219,10 @@ export function Transactions() {
       type: txn.type,
       amount: String(txn.amount),
       description: txn.description || '',
-      date: txn.date.split('T')[0],
+      date: dateOnly(txn.date),
       accountId: txn.accountId,
       categoryId: txn.categoryId || '',
-      dueDate: txn.dueDate ? txn.dueDate.split('T')[0] : '',
+      dueDate: txn.dueDate ? dateOnly(txn.dueDate) : '',
       isPaid: txn.isPaid || false,
     });
     setShowModal(true);
@@ -225,7 +235,7 @@ export function Transactions() {
       type: 'expense',
       amount: '',
       description: '',
-      date: new Date().toISOString().split('T')[0],
+      date: todayISO(),
       accountId: '',
       categoryId: '',
       dueDate: '',
@@ -341,7 +351,6 @@ export function Transactions() {
 
       <div className="flex gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
         {(['all', 'upcoming', 'overdue', 'paid'] as const).map(tab => {
-          const count = transactions.filter(t => getTransactionStatus(t) === tab || (tab === 'all' && true)).length;
           const tabInfo = tab === 'all' ? { label: 'Todas', icon: null } : statusLabels[tab];
           return (
             <button

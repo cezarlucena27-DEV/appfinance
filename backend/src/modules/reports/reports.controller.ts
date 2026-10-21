@@ -13,10 +13,9 @@ export class ReportsController {
   getMonthly(
     @Query('month') month: string,
     @Query('year') year: string,
-    @Query('scope') scope: string,
     @Request() req,
   ) {
-    return this.reportsService.getMonthly(req.user.id, parseInt(month), parseInt(year), scope || 'individual');
+    return this.reportsService.getMonthly(req.user.id, parseInt(month), parseInt(year));
   }
 
   @Get('yearly')
@@ -29,13 +28,12 @@ export class ReportsController {
   async exportCSV(
     @Query('month') month: string,
     @Query('year') year: string,
-    @Query('scope') scope: string,
     @Request() req,
     @Res() res: Response,
   ) {
-    const csv = await this.reportsService.exportCSV(req.user.id, parseInt(month), parseInt(year), scope || 'individual');
+    const csv = await this.reportsService.exportCSV(req.user.id, parseInt(month), parseInt(year));
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=relatorio-${month}-${year}-${scope || 'individual'}.csv`);
+    res.setHeader('Content-Disposition', `attachment; filename=relatorio-${month}-${year}.csv`);
     res.send(csv);
   }
 
@@ -44,13 +42,12 @@ export class ReportsController {
   async exportPDF(
     @Query('month') month: string,
     @Query('year') year: string,
-    @Query('scope') scope: string,
     @Request() req,
     @Res() res: Response,
   ) {
-    const buffer = await this.reportsService.exportPDF(req.user.id, parseInt(month), parseInt(year), scope || 'individual');
+    const buffer = await this.reportsService.exportPDF(req.user.id, parseInt(month), parseInt(year));
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=relatorio-${month}-${year}-${scope || 'individual'}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=relatorio-${month}-${year}.pdf`);
     res.send(buffer);
   }
 
@@ -59,13 +56,12 @@ export class ReportsController {
   async exportExcel(
     @Query('month') month: string,
     @Query('year') year: string,
-    @Query('scope') scope: string,
     @Request() req,
     @Res() res: Response,
   ) {
-    const buffer = await this.reportsService.exportExcel(req.user.id, parseInt(month), parseInt(year), scope || 'individual');
+    const buffer = await this.reportsService.exportExcel(req.user.id, parseInt(month), parseInt(year));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=relatorio-${month}-${year}-${scope || 'individual'}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=relatorio-${month}-${year}.xlsx`);
     res.send(buffer);
   }
 }

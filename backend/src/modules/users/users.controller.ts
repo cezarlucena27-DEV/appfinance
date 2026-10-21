@@ -1,9 +1,15 @@
-import { Controller, Get, Post, Patch, Put, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import {
+  InviteWorkspaceUserDto,
+  ToggleWorkspaceUserActiveDto,
+  UpdateWorkspaceUserDto,
+  UpdateWorkspaceUserRoleDto,
+} from './dto/users.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
@@ -24,19 +30,31 @@ export class UsersController {
 
   @Roles('master')
   @Patch(':id/toggle-active')
-  toggleActive(@Param('id') id: string, @Body() body: { message?: string }, @CurrentUser() user: any) {
+  toggleActive(
+    @Param('id') id: string,
+    @Body() body: ToggleWorkspaceUserActiveDto,
+    @CurrentUser() user: any,
+  ) {
     return this.usersService.toggleActive(id, user.workspaceId, body?.message);
   }
 
   @Roles('master')
   @Patch(':id/role')
-  updateRole(@Param('id') id: string, @Body('role') role: string, @CurrentUser() user: any) {
-    return this.usersService.updateRole(id, user.workspaceId, role);
+  updateRole(
+    @Param('id') id: string,
+    @Body() body: UpdateWorkspaceUserRoleDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.usersService.updateRole(id, user.workspaceId, body.role);
   }
 
   @Roles('master')
   @Put(':id')
-  updateUser(@Param('id') id: string, @Body() body: { name?: string; email?: string }, @CurrentUser() user: any) {
+  updateUser(
+    @Param('id') id: string,
+    @Body() body: UpdateWorkspaceUserDto,
+    @CurrentUser() user: any,
+  ) {
     return this.usersService.updateUser(id, user.workspaceId, body);
   }
 
@@ -54,13 +72,7 @@ export class UsersController {
 
   @Roles('master')
   @Post('invite')
-  inviteUser(@Body() body: { email: string; name: string }, @CurrentUser() user: any) {
+  inviteUser(@Body() body: InviteWorkspaceUserDto, @CurrentUser() user: any) {
     return this.usersService.inviteUser(user.workspaceId, body.email, body.name, user.id);
-  }
-
-  @Roles('master')
-  @Patch('workspace/plan')
-  updatePlan(@Body('plan') plan: string, @CurrentUser() user: any) {
-    return this.usersService.updateWorkspacePlan(user.workspaceId, plan);
   }
 }

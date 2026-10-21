@@ -11,20 +11,18 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    
-    if (!requiredRoles) {
+
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
-    
+
     const { user } = context.switchToHttp().getRequest();
     if (!user) return false;
 
-    // Check platform_admin via globalRole
-    if (requiredRoles.includes('platform_admin') && user.globalRole === 'platform_admin') {
-      return true;
+    if (requiredRoles.includes('platform_admin')) {
+      return user.globalRole === 'platform_admin' && user.isAdminApproved === true;
     }
 
-    // Check workspace roles (master, admin, member)
-    return requiredRoles.some((role) => user?.role === role || user?.globalRole === role);
+    return requiredRoles.some((role) => user.role === role);
   }
 }

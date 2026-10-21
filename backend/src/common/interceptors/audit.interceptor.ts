@@ -1,6 +1,7 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { AuditService } from '../../modules/admin/audit.service';
+import { redactSensitive } from '../sanitize';
 
 const ENTITY_MAP: Record<string, string> = {
   '/api/transactions': 'transaction',
@@ -9,7 +10,6 @@ const ENTITY_MAP: Record<string, string> = {
   '/api/categories': 'category',
   '/api/budgets': 'budget',
   '/api/goals': 'goal',
-  '/api/auth': 'auth',
   '/api/users': 'user',
   '/api/admin': 'admin',
 };
@@ -30,6 +30,7 @@ export class AuditInterceptor implements NestInterceptor {
     const { method, url, body, user, ip, headers } = request;
 
     if (method === 'GET') return next.handle();
+    if (String(url).startsWith('/api/auth')) return next.handle();
 
     const action = METHOD_MAP[method];
     if (!action) return next.handle();
@@ -40,14 +41,14 @@ export class AuditInterceptor implements NestInterceptor {
     const userId = user?.id;
     if (!userId) return next.handle();
 
-    const userAgent = headers['user-agent'] || '';
-    const clientIp = ip || headers['x-forwarded-for'] || '';
+    const userAgent = String(headers['user-agent'] || '').slice(0, 500);
+    const clientIp = ip || '';
 
     return next.handle().pipe(
       tap(async (responseData) => {
         try {
           const entityId = responseData?.id || body?.id || 'unknown';
-          const newValues = action === 'delete' ? null : body;
+          const newValues = action === 'delete' ? null : redactSensitive(body ?? {});
 
           await this.auditService.log(
             userId, action, entity, entityId,

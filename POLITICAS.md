@@ -184,9 +184,9 @@ Não cobrimos: danos indiretos, lucros cessantes, danos morais (exceto dolo/culp
 - **Criptografia em trânsito**: TLS 1.3 (HTTPS forçado, HSTS)
 - **Criptografia em repouso**: AES-256 (banco, storage, backups)
 - **Senhas**: bcrypt (cost 12), nunca logadas, nunca em texto
-- **Tokens**: JWT RS256, access 15min + refresh 30d (rotação, revogação)
+- **Tokens**: JWT HS256, access 15min + refresh 7d em cookie httpOnly (rotação, revogação por tokenVersion)
 - **Backups**: AES-256-GCM + senha opcional do usuário (PBKDF2 100k iterações)
-- **Banco**: PostgreSQL, prepared statements (anti-SQLi), RLS (row-level security) por workspace
+- **Banco**: MySQL, prepared statements via Prisma (anti-SQLi), isolamento por workspace na camada de aplicacao
 - **Rate limiting**: Por IP e por usuário (configurável)
 - **Headers de segurança**: CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy
 - **Dependências**: Audit semanal (npm audit, Snyk), atualizações de segurança em 48h

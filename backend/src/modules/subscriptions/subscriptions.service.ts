@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -97,7 +98,7 @@ export class SubscriptionsService {
   }
 
   async getPix(userId: string, planId: string) {
-    if (!planId || planId === 'free') {
+    if (!['premium', 'pro'].includes(planId)) {
       throw new BadRequestException('Plano invalido para geracao de PIX');
     }
 
@@ -112,11 +113,12 @@ export class SubscriptionsService {
     const subscription = await this.prisma.subscription.findUnique({ where: { userId } });
     const txid = (subscription?.id || userId).replace(/[^a-zA-Z0-9]/g, '').substring(0, 25).toUpperCase();
 
-    const payload = this.buildPixPayload(pixKey, plan.price, txid);
+    const amount = Number(plan.price);
+    const payload = this.buildPixPayload(pixKey, amount, txid);
 
     return {
       pixKey,
-      amount: plan.price,
+      amount,
       planName: plan.name,
       payload,
     };
@@ -155,7 +157,7 @@ export class SubscriptionsService {
       id: subscription?.id ?? null,
       planId,
       plan: plan
-        ? { id: plan.id, name: plan.name, price: plan.price }
+        ? { id: plan.id, name: plan.name, price: Number(plan.price) }
         : { id: 'free', name: 'Plano Gratuito', price: 0 },
       status: subscription?.status ?? 'active',
       value: subscription?.value ?? 0,
@@ -207,11 +209,18 @@ export class SubscriptionsService {
   }
 
   async checkout(userId: string, plan: string, billingDay?: number) {
+    if (!['premium', 'pro'].includes(plan)) {
+      throw new BadRequestException('Plano invalido');
+    }
+
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { userId },
       include: { workspace: true },
     });
     if (!membership) throw new NotFoundException('User has no workspace');
+    if (membership.role !== 'master') {
+      throw new ForbiddenException('Apenas o master do workspace pode contratar um plano');
+    }
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -225,19 +234,14 @@ export class SubscriptionsService {
 
     const nextDueDate = this.computeNextDueDate(day);
 
-    await this.prisma.workspace.update({
-      where: { id: membership.workspaceId },
-      data: { plan },
-    });
-
     const planRecord = await this.prisma.plan.findUnique({ where: { id: plan } });
-    const value = planRecord?.price ?? (plan === 'premium' ? 29.9 : plan === 'pro' ? 49.9 : 0);
+    const value = planRecord?.price ?? new Prisma.Decimal(plan === 'premium' ? 29.9 : 49.9);
 
     const existing = await this.prisma.subscription.findUnique({ where: { userId } });
     if (existing) {
       return this.prisma.subscription.update({
         where: { userId },
-        data: { planId: plan, status: 'active', billingDay: day, nextDueDate, value },
+        data: { planId: plan, status: 'pending', billingDay: day, nextDueDate, value },
       });
     }
     return this.prisma.subscription.create({
@@ -245,7 +249,7 @@ export class SubscriptionsService {
         userId,
         workspaceId: membership.workspaceId,
         planId: plan,
-        status: 'active',
+        status: 'pending',
         billingDay: day,
         nextDueDate,
         value,
@@ -286,7 +290,7 @@ export class SubscriptionsService {
       daysUntilDue,
       dueDate: due,
       planName: sub!.plan?.name || sub!.planId,
-      value: sub!.value,
+      value: Number(sub!.value),
     };
   }
 
@@ -298,6 +302,9 @@ export class SubscriptionsService {
       where: { userId },
     });
     if (!membership) throw new NotFoundException('User has no workspace');
+    if (membership.role !== 'master') {
+      throw new ForbiddenException('Apenas o master do workspace pode cancelar o plano');
+    }
 
     await this.prisma.workspace.update({
       where: { id: membership.workspaceId },

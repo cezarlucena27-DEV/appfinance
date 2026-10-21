@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ADMIN_PANEL_KEY } from '../decorators/admin-panel.decorator';
-import { SUPER_ADMIN_EMAIL } from '../../modules/admin/admin.service';
+import { getSuperAdminEmail } from '../security.config';
 
 @Injectable()
 export class AdminPanelGuard implements CanActivate {
@@ -18,9 +18,15 @@ export class AdminPanelGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest();
-    if (!user) return false;
+    if (!user || !user.id) return false;
 
-    if (user.email === SUPER_ADMIN_EMAIL) return true;
+    if (user.globalRole !== 'platform_admin' || user.isAdminApproved !== true) {
+      throw new ForbiddenException('Acesso restrito a administradores da plataforma');
+    }
+
+    const superAdminEmail = getSuperAdminEmail();
+    const isSuperAdmin = Boolean(superAdminEmail) && user.email === superAdminEmail;
+    if (isSuperAdmin) return true;
 
     if (requiredPanel === 'admins') {
       throw new ForbiddenException('Apenas o super admin pode gerenciar administradores');
@@ -30,8 +36,11 @@ export class AdminPanelGuard implements CanActivate {
 
     let panels: string[] = [];
     try {
-      panels = JSON.parse(user.adminPanels || '[]');
-    } catch {}
+      const parsed = JSON.parse(user.adminPanels || '[]');
+      if (Array.isArray(parsed)) panels = parsed.filter((panel) => typeof panel === 'string');
+    } catch {
+      panels = [];
+    }
 
     if (panels.includes(requiredPanel)) return true;
 

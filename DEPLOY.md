@@ -36,13 +36,20 @@ Se o painel permitir editar comandos manualmente:
 | Variável | Valor |
 | --- | --- |
 | `NODE_ENV` | `production` |
-| `JWT_SECRET` | segredo forte novo (nunca o antigo!) |
-| `JWT_REFRESH_SECRET` | outro segredo forte |
-| `ADMIN_KEY` | nova chave do painel admin |
+| `JWT_SECRET` | segredo forte novo, mínimo 32 caracteres (nunca o antigo!) |
+| `JWT_REFRESH_SECRET` | outro segredo forte, **diferente** do `JWT_SECRET` |
+| `SUPER_ADMIN_EMAIL` | e-mail do super administrador — **obrigatório** |
 | `FRONTEND_URL` | `https://sandybrown-jellyfish-697903.hostingersite.com` |
 | `DATABASE_URL` | string de conexão MySQL — ver abaixo |
+| `TRUST_PROXY` | `1` atrás de proxy reverso (padrão do Hostinger); `0` se acesso direto |
+
+> O app **recusa iniciar** se `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`
+> (mín. 32, distintos) ou `SUPER_ADMIN_EMAIL` estiverem ausentes.
 
 Gerar segredos: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
+
+Após o primeiro deploy, promova a conta do super admin (o e-mail precisa já
+existir no banco): `npm run bootstrap:super-admin`.
 
 ## 🗄️ Banco de dados (MySQL)
 

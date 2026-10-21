@@ -31,6 +31,15 @@ export class OnboardingService {
         weekendWork: dto.weekendWork,
         onboardingCompleted: true,
       },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        globalRole: true,
+        onboardingCompleted: true,
+        isActive: true,
+        createdAt: true,
+      },
     });
   }
 }

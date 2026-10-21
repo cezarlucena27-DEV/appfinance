@@ -1,10 +1,13 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { DEFAULT_CATEGORIES } from '../../common/default-categories';
-import { SUPER_ADMIN_EMAIL } from '../admin/admin.service';
+import { getJwtRefreshSecret, getSuperAdminEmail } from '../../common/security.config';
+
+const FORGOT_PASSWORD_MESSAGE =
+  'Se o e-mail estiver cadastrado, o administrador do workspace foi notificado. Nenhuma senha e exibida por este canal.';
 
 @Injectable()
 export class AuthService {
@@ -14,37 +17,35 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existingUser = await this.prisma.user.findFirst({
-      where: { email: dto.email },
-    });
+    const email = dto.email.trim().toLowerCase();
 
+    const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       throw new ConflictException('Email ja cadastrado no sistema');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
-    const isSuperAdmin = dto.email.trim().toLowerCase() === SUPER_ADMIN_EMAIL;
     const user = await this.prisma.user.create({
       data: {
-        name: dto.name,
-        email: dto.email,
+        name: dto.name.trim(),
+        email,
         passwordHash,
-        globalRole: isSuperAdmin ? 'platform_admin' : 'regular',
-        isAdminApproved: isSuperAdmin,
+        globalRole: 'regular',
+        isAdminApproved: false,
         defaultsCreated: true,
       },
     });
 
     const workspace = await this.prisma.workspace.create({
       data: {
-        name: dto.workspaceName || `${dto.name}'s Workspace`,
+        name: dto.workspaceName?.trim() || `${dto.name.trim()}'s Workspace`,
         ownerId: user.id,
         plan: 'free',
       },
     });
 
-    await this.prisma.workspaceMember.create({
+    const membership = await this.prisma.workspaceMember.create({
       data: {
         userId: user.id,
         workspaceId: workspace.id,
@@ -53,82 +54,40 @@ export class AuthService {
     });
 
     await this.prisma.category.createMany({
-      data: DEFAULT_CATEGORIES.map(cat => ({ ...cat, userId: user.id })),
-    });
-
-    const membership = await this.prisma.workspaceMember.findFirst({
-      where: { userId: user.id, workspaceId: workspace.id },
+      data: DEFAULT_CATEGORIES.map((cat) => ({ ...cat, userId: user.id })),
     });
 
     const tokens = this.generateTokens(user, workspace.id, membership.role);
-    const { passwordHash: _, ...userWithoutPassword } = user;
     return {
-      user: {
-        ...userWithoutPassword,
-        workspaceId: workspace.id,
-        role: membership.role,
-        workspace: { id: workspace.id, name: workspace.name, plan: workspace.plan },
-      },
+      user: this.publicUser(user, workspace, 'master'),
       ...tokens,
     };
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findFirst({
-      where: { email: dto.email },
-    });
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      throw new UnauthorizedException('Email nao cadastrado no sistema. Verifique se digitou corretamente.');
+      throw new UnauthorizedException('Email ou senha incorretos.');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
-      const membership = await this.prisma.workspaceMember.findFirst({
-        where: { userId: user.id },
-      });
-      const role = membership?.role || 'member';
-      if (role === 'master') {
-        throw new UnauthorizedException('Senha incorreta. Use "Esqueci minha senha" para redefinir.');
-      }
-      let masterName = '';
-      let masterEmail = '';
-      if (user.createdById) {
-        const creator = await this.prisma.user.findUnique({ where: { id: user.createdById } });
-        masterName = creator?.name || '';
-        masterEmail = creator?.email || '';
-      }
-      if (!masterName && membership?.workspaceId) {
-        const wsMaster = await this.prisma.workspaceMember.findFirst({
-          where: { workspaceId: membership.workspaceId, role: 'master' },
-          include: { user: true },
-        });
-        masterName = wsMaster?.user?.name || '';
-        masterEmail = wsMaster?.user?.email || '';
-      }
-      const masterInfo = masterName ? ` (${masterName}${masterEmail ? ` - ${masterEmail}` : ''})` : '';
-      throw new UnauthorizedException(`Senha incorreta. Solicite a redefinicao de senha ao seu usuario master${masterInfo}.`);
+      throw new UnauthorizedException('Email ou senha incorretos.');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException(
-        user.deactivatedMessage
-          ? `Sua conta foi desativada. Motivo: ${user.deactivatedMessage}`
-          : 'Sua conta foi desativada. Entre em contato com o administrador.'
-      );
+      throw new UnauthorizedException('Conta desativada. Entre em contato com o administrador.');
     }
 
     if (user.globalRole === 'platform_admin' && !user.isAdminApproved) {
-      throw new UnauthorizedException('Conta de administrador aguardando aprovacao. Entre em contato com o administrador.');
+      throw new UnauthorizedException('Conta de administrador aguardando aprovacao.');
     }
 
     const blockSubscription = await this.prisma.subscription.findUnique({ where: { userId: user.id } });
     if (blockSubscription?.blocked) {
-      throw new UnauthorizedException(
-        blockSubscription.blockReason === 'Falta de pagamento' || !blockSubscription.blockReason
-          ? 'Sua conta esta bloqueada por falta de pagamento. Entre em contato com o financeiro.'
-          : `Sua conta esta bloqueada. Motivo: ${blockSubscription.blockReason}`
-      );
+      throw new UnauthorizedException('Conta bloqueada por pendencia financeira. Entre em contato com o financeiro.');
     }
 
     const membership = await this.prisma.workspaceMember.findFirst({
@@ -138,29 +97,20 @@ export class AuthService {
 
     const workspaceId = membership?.workspaceId || '';
     const role = membership?.role || 'member';
-
     const tokens = this.generateTokens(user, workspaceId, role);
-    const { passwordHash: _, ...userWithoutPassword } = user;
 
-    await this.prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date(), lastSeenAt: new Date() } });
-
-    const subInfo = await this.prisma.subscription.findUnique({
-      where: { userId: user.id },
-      select: { blocked: true, blockReason: true, accessUntil: true, nextDueDate: true },
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date(), lastSeenAt: new Date() },
     });
 
     return {
       user: {
-        ...userWithoutPassword,
-        workspaceId,
-        role,
-        workspace: membership?.workspace
-          ? { id: membership.workspace.id, name: membership.workspace.name, plan: membership.workspace.plan }
-          : undefined,
-        subscriptionBlocked: subInfo?.blocked || false,
-        blockReason: subInfo?.blockReason || null,
-        accessUntil: subInfo?.accessUntil || null,
-        nextDueDate: subInfo?.nextDueDate || null,
+        ...this.publicUser(user, membership?.workspace, role),
+        subscriptionBlocked: blockSubscription?.blocked || false,
+        blockReason: blockSubscription?.blockReason || null,
+        accessUntil: blockSubscription?.accessUntil || null,
+        nextDueDate: blockSubscription?.nextDueDate || null,
       },
       ...tokens,
     };
@@ -204,6 +154,7 @@ export class AuthService {
 
     return {
       ...user,
+      isSuperAdmin: !!getSuperAdminEmail() && user.email.toLowerCase() === getSuperAdminEmail(),
       workspaceId: membership?.workspaceId || '',
       role: membership?.role || 'member',
       workspace: membership?.workspace || undefined,
@@ -215,117 +166,117 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string) {
+    let payload: any;
     try {
-      const payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET || 'financeapp-refresh-secret-2026',
-      });
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-      });
-
-      if (!user || !user.isActive) {
-        throw new UnauthorizedException('Sessao expirada. Entre novamente.');
-      }
-
-      const membership = await this.prisma.workspaceMember.findFirst({
-        where: { userId: user.id },
-      });
-
-      const tokens = this.generateTokens(user, membership?.workspaceId || '', membership?.role || 'member');
-      return tokens;
+      payload = this.jwtService.verify(refreshToken, { secret: getJwtRefreshSecret() });
     } catch {
       throw new UnauthorizedException('Sessao expirada. Entre novamente.');
     }
+
+    if (!payload?.sub || payload.type !== 'refresh') {
+      throw new UnauthorizedException('Sessao expirada. Entre novamente.');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || !user.isActive || (payload.ver ?? 0) !== user.tokenVersion) {
+      throw new UnauthorizedException('Sessao expirada. Entre novamente.');
+    }
+    if (user.globalRole === 'platform_admin' && !user.isAdminApproved) {
+      throw new UnauthorizedException('Conta de administrador sem aprovacao.');
+    }
+
+    const subscription = await this.prisma.subscription.findUnique({ where: { userId: user.id } });
+    if (subscription?.blocked) {
+      throw new UnauthorizedException('Conta bloqueada por pendencia financeira. Entre em contato com o financeiro.');
+    }
+
+    // Rotaciona o refresh token: o token apresentado deixa de ser valido para
+    // uso unico, limitando a janela de reuso de um token roubado.
+    const rotated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { tokenVersion: { increment: 1 } },
+    });
+
+    const membership = await this.prisma.workspaceMember.findFirst({
+      where: { userId: user.id },
+    });
+
+    return this.generateTokens(rotated, membership?.workspaceId || '', membership?.role || 'member');
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('Usuario nao encontrado');
 
-    const isvalid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isvalid) throw new UnauthorizedException('Senha atual incorreta');
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) throw new UnauthorizedException('Senha atual incorreta');
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
-    return { message: 'Senha alterada com sucesso' };
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
+    });
+
+    const membership = await this.prisma.workspaceMember.findFirst({ where: { userId } });
+    const tokens = this.generateTokens(updated, membership?.workspaceId || '', membership?.role || 'member');
+
+    return { message: 'Senha alterada com sucesso', ...tokens };
+  }
+
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    return { message: 'Sessao encerrada' };
   }
 
   async forgotPassword(email: string) {
-    const user = await this.prisma.user.findFirst({ where: { email: email.trim().toLowerCase() } });
-    if (!user) {
-      return { registered: false, message: 'Email nao cadastrado no sistema. Verifique se digitou corretamente.' };
+    const normalized = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email: normalized } });
+
+    if (user && user.isActive) {
+      await this.prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: 'PASSWORD_RESET_REQUESTED',
+          entity: 'auth',
+          entityId: user.id,
+        },
+      }).catch(() => undefined);
     }
 
-    if (!user.isActive) {
-      return {
-        registered: true,
-        active: false,
-        message: user.deactivatedMessage
-          ? `Sua conta foi desativada. Motivo: ${user.deactivatedMessage}`
-          : 'Sua conta foi desativada. Entre em contato com o administrador.',
-      };
-    }
+    return { message: FORGOT_PASSWORD_MESSAGE };
+  }
 
-    const membership = await this.prisma.workspaceMember.findFirst({ where: { userId: user.id } });
-    const role = membership?.role || 'member';
-
-    if (role !== 'master') {
-      let masterName = '';
-      let masterEmail = '';
-      if (user.createdById) {
-        const creator = await this.prisma.user.findUnique({ where: { id: user.createdById } });
-        masterName = creator?.name || '';
-        masterEmail = creator?.email || '';
-      }
-      if (!masterName && membership?.workspaceId) {
-        const wsMaster = await this.prisma.workspaceMember.findFirst({
-          where: { workspaceId: membership.workspaceId, role: 'master' },
-          include: { user: true },
-        });
-        masterName = wsMaster?.user?.name || '';
-        masterEmail = wsMaster?.user?.email || '';
-      }
-      const masterInfo = masterName ? ` (${masterName}${masterEmail ? ` - ${masterEmail}` : ''})` : '';
-      return {
-        registered: true,
-        isMaster: false,
-        message: `Conta comum. Solicite a redefinicao de senha ao seu usuario master${masterInfo}.`,
-      };
-    }
-
-    const tempPassword = Math.random().toString(36).slice(-12) + 'A1';
-    const passwordHash = await bcrypt.hash(tempPassword, 12);
-    await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  private publicUser(user: any, workspace: any, role: string) {
+    const { passwordHash, tokenVersion, ...safeUser } = user;
     return {
-      registered: true,
-      isMaster: true,
-      tempPassword,
-      message: 'Senha redefinida com sucesso. Use a nova senha abaixo para entrar.',
+      ...safeUser,
+      isSuperAdmin: !!getSuperAdminEmail() && String(user.email).toLowerCase() === getSuperAdminEmail(),
+      role,
+      workspaceId: workspace?.id || '',
+      workspace: workspace
+        ? { id: workspace.id, name: workspace.name, plan: workspace.plan }
+        : undefined,
     };
   }
 
-  async resetPassword(token: string, newPassword: string) {
-    try {
-      const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_REFRESH_SECRET || 'financeapp-refresh-secret-2026',
-      });
-      const passwordHash = await bcrypt.hash(newPassword, 12);
-      await this.prisma.user.update({ where: { id: payload.sub }, data: { passwordHash } });
-      return { message: 'Senha redefinida com sucesso' };
-    } catch {
-      throw new UnauthorizedException('Token invalido ou expirado');
-    }
-  }
-
   private generateTokens(user: any, workspaceId: string, role: string) {
-    const payload = { sub: user.id, email: user.email, globalRole: user.globalRole, workspaceId, role };
+    const basePayload = {
+      sub: user.id,
+      email: user.email,
+      globalRole: user.globalRole,
+      workspaceId,
+      role,
+      ver: user.tokenVersion,
+    };
 
-    const accessToken = this.jwtService.sign(payload);
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET || 'financeapp-refresh-secret-2026',
-      expiresIn: '7d',
-    });
+    const accessToken = this.jwtService.sign({ ...basePayload, type: 'access' });
+    const refreshToken = this.jwtService.sign(
+      { ...basePayload, type: 'refresh' },
+      { secret: getJwtRefreshSecret(), expiresIn: '7d' },
+    );
 
     return { accessToken, refreshToken };
   }

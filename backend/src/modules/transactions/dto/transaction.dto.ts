@@ -1,18 +1,19 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsDateString, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean, IsDateString, IsIn, Min } from 'class-validator';
 
 export class CreateTransactionDto {
   @IsString()
   accountId: string;
 
   @IsString()
-  categoryId: string;
+  @IsOptional()
+  categoryId?: string;
 
   @IsString()
   @IsOptional()
   cardId?: string;
 
-  @IsString()
-  type: string; // income, expense, transfer
+  @IsIn(['income', 'expense'])
+  type: string;
 
   @IsNumber()
   @Min(0.01)
@@ -47,7 +48,7 @@ export class CreateTransactionDto {
 }
 
 export class UpdateTransactionDto {
-  @IsString()
+  @IsIn(['income', 'expense'])
   @IsOptional()
   type?: string;
 

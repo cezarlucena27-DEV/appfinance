@@ -2,48 +2,33 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as PDFDocument from 'pdfkit';
 import { buildExcel } from '../../common/utils/excel.util';
+import { moneyNumber } from '../../common/money';
 
 @Injectable()
 export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
-  private async getScopeWhere(userId: string, scope: string) {
-    if (scope !== 'conjunto') return { userId };
-    const own = await this.prisma.account.findMany({ where: { userId }, select: { id: true } });
-    const shares = await this.prisma.accountShare.findMany({ where: { userId }, select: { accountId: true } });
-    const sharesByMe = await this.prisma.accountShare.findMany({
-      where: { account: { userId } },
-      select: { userId: true },
-    });
-
-    const ids = new Set<string>(own.map(a => a.id));
-    for (const s of shares) ids.add(s.accountId);
-    const partnerIds = [...new Set(sharesByMe.map(s => s.userId))];
-    if (partnerIds.length) {
-      const partnerAccounts = await this.prisma.account.findMany({
-        where: { userId: { in: partnerIds } },
-        select: { id: true },
-      });
-      for (const a of partnerAccounts) ids.add(a.id);
-    }
-    return { accountId: { in: [...ids] } };
-  }
-
-  async getMonthly(userId: string, month: number, year: number, scope = 'individual') {
+  async getMonthly(userId: string, month: number, year: number) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
-    const where = { date: { gte: startDate, lte: endDate }, ...(await this.getScopeWhere(userId, scope)) };
+    const where = { date: { gte: startDate, lte: endDate }, userId };
 
-    const [transactions, summary, byCategory] = await Promise.all([
+    const [transactions, incomeAgg, expenseAgg, txCount, byCategory] = await Promise.all([
       this.prisma.transaction.findMany({
         where,
         include: { category: true, account: true, user: { select: { id: true, name: true } } },
         orderBy: { date: 'desc' },
+        take: 5000,
       }),
       this.prisma.transaction.aggregate({
         where: { ...where, type: 'income' },
         _sum: { amount: true },
       }),
+      this.prisma.transaction.aggregate({
+        where: { ...where, type: 'expense' },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.count({ where }),
       this.prisma.transaction.groupBy({
         by: ['categoryId'],
         where: { ...where, type: 'expense' },
@@ -52,10 +37,8 @@ export class ReportsService {
       }),
     ]);
 
-    const totalIncome = summary._sum.amount || 0;
-    const totalExpenses = transactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = moneyNumber(incomeAgg._sum.amount);
+    const totalExpenses = moneyNumber(expenseAgg._sum.amount);
 
     const categoryDetails = await Promise.all(
       byCategory.map(async (cat) => {
@@ -63,7 +46,7 @@ export class ReportsService {
           return {
             category: 'Sem categoria',
             color: '#64748B',
-            total: cat._sum.amount || 0,
+            total: moneyNumber(cat._sum.amount),
             count: cat._count,
           };
         }
@@ -71,7 +54,7 @@ export class ReportsService {
         return {
           category: category?.name || 'Sem categoria',
           color: category?.color || '#64748B',
-          total: cat._sum.amount || 0,
+          total: moneyNumber(cat._sum.amount),
           count: cat._count,
         };
       })
@@ -80,11 +63,10 @@ export class ReportsService {
     return {
       month,
       year,
-      scope,
       totalIncome,
       totalExpenses,
       balance: totalIncome - totalExpenses,
-      transactionCount: transactions.length,
+      transactionCount: txCount,
       transactions,
       byCategory: categoryDetails.sort((a, b) => b.total - a.total),
     };
@@ -109,42 +91,48 @@ export class ReportsService {
 
       months.push({
         month: m,
-        income: income._sum.amount || 0,
-        expenses: expense._sum.amount || 0,
-        balance: (income._sum.amount || 0) - (expense._sum.amount || 0),
+        income: moneyNumber(income._sum.amount),
+        expenses: moneyNumber(expense._sum.amount),
+        balance: moneyNumber(income._sum.amount) - moneyNumber(expense._sum.amount),
       });
     }
     return months;
   }
 
-  async exportCSV(userId: string, month: number, year: number, scope = 'individual') {
+  async exportCSV(userId: string, month: number, year: number) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
-    const where = { date: { gte: startDate, lte: endDate }, ...(await this.getScopeWhere(userId, scope)) };
+    const where = { date: { gte: startDate, lte: endDate }, userId };
 
     const transactions = await this.prisma.transaction.findMany({
       where,
       include: { category: true, account: true, user: { select: { name: true } } },
       orderBy: { date: 'desc' },
+      take: 5000,
     });
 
-    const header = 'Data,Tipo,Categoria,Descricao,Valor,Conta,Usuario\n';
-    const rows = transactions.map(t => {
-      const date = t.date.toISOString().split('T')[0];
-      const type = t.type === 'income' ? 'Receita' : 'Despesa';
-      const category = t.category?.name || 'Sem categoria';
-      const desc = (t.description || '').replace(/,/g, ';');
-      const amount = t.amount.toFixed(2);
-      const account = t.account?.name || 'Sem conta';
-      const owner = t.user?.name || '';
-      return `${date},${type},${category},${desc},${amount},${account},${owner}`;
-    }).join('\n');
+    const cell = (value: unknown): string => {
+      let text = String(value ?? '');
+      if (/^[=+\-@]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
 
-    return header + rows;
+    const header = ['Data', 'Tipo', 'Categoria', 'Descricao', 'Valor', 'Conta', 'Usuario'].map(cell).join(',');
+    const rows = transactions.map(t => [
+      t.date.toISOString().split('T')[0],
+      t.type === 'income' ? 'Receita' : 'Despesa',
+      t.category?.name || 'Sem categoria',
+      t.description || '',
+      moneyNumber(t.amount).toFixed(2),
+      t.account?.name || 'Sem conta',
+      t.user?.name || '',
+    ].map(cell).join(',')).join('\n');
+
+    return header + '\n' + rows;
   }
 
-  async exportExcel(userId: string, month: number, year: number, scope = 'individual') {
-    const data = await this.getMonthly(userId, month, year, scope);
+  async exportExcel(userId: string, month: number, year: number) {
+    const data = await this.getMonthly(userId, month, year);
     const monthNames = [
       'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -159,7 +147,6 @@ export class ReportsService {
         ],
         rows: [
           { label: 'Mes', value: `${monthNames[month - 1]} de ${year}` },
-          { label: 'Escopo', value: scope === 'conjunto' ? 'Conjunto' : 'Individual' },
           { label: 'Receitas', value: data.totalIncome },
           { label: 'Despesas', value: data.totalExpenses },
           { label: 'Saldo', value: data.balance },
@@ -182,7 +169,7 @@ export class ReportsService {
           type: t.type === 'income' ? 'Receita' : 'Despesa',
           category: t.category?.name || 'Sem categoria',
           description: t.description || '',
-          amount: t.type === 'income' ? t.amount : -t.amount,
+          amount: t.type === 'income' ? moneyNumber(t.amount) : -moneyNumber(t.amount),
           account: t.account?.name || 'Sem conta',
           user: (t as any).user?.name || '',
         })),
@@ -205,8 +192,8 @@ export class ReportsService {
     return buildExcel(sheets);
   }
 
-  async exportPDF(userId: string, month: number, year: number, scope = 'individual'): Promise<Buffer> {
-    const data = await this.getMonthly(userId, month, year, scope);
+  async exportPDF(userId: string, month: number, year: number): Promise<Buffer> {
+    const data = await this.getMonthly(userId, month, year);
 
     const monthNames = [
       'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
@@ -287,7 +274,7 @@ export class ReportsService {
     doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(20).text('FinanceApp', MARGIN, 30);
     doc.fontSize(14).text('Relatorio Financeiro Mensal', MARGIN, 58);
     doc.font('Helvetica').fontSize(10)
-      .text(`${monthNames[month - 1]} de ${year} · Escopo: ${scope === 'conjunto' ? 'Conjunto' : 'Individual'}`, MARGIN, 84);
+      .text(`${monthNames[month - 1]} de ${year}`, MARGIN, 84);
     doc.fillColor('#1E293B').font('Helvetica').fontSize(10);
     doc.y = 130;
 
@@ -340,7 +327,7 @@ export class ReportsService {
           t.type === 'income' ? 'Receita' : 'Despesa',
           t.category?.name || 'Sem categoria',
           t.description || '',
-          `${t.type === 'income' ? '+' : '-'} ${formatCurrency(t.amount)}`,
+          `${t.type === 'income' ? '+' : '-'} ${formatCurrency(moneyNumber(t.amount))}`,
           t.account?.name || 'Sem conta',
           (t as any).user?.name || '',
         ]),
