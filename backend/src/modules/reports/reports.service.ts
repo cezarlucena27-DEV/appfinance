@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as PDFDocument from 'pdfkit';
 import { buildExcel } from '../../common/utils/excel.util';
@@ -8,10 +9,24 @@ import { moneyNumber } from '../../common/money';
 export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
-  async getMonthly(userId: string, month: number, year: number) {
+  // Escopo "conjunto": transacoes do proprio usuario (em qualquer conta) mais as
+  // de contas dele ou compartilhadas com ele. Contas do parceiro que nao foram
+  // compartilhadas nunca entram no relatorio.
+  private getScopeWhere(userId: string, scope: string): Prisma.TransactionWhereInput {
+    if (scope !== 'conjunto') return { userId };
+    return {
+      OR: [
+        { userId },
+        { account: { userId } },
+        { account: { shares: { some: { userId } } } },
+      ],
+    };
+  }
+
+  async getMonthly(userId: string, month: number, year: number, scope = 'individual') {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
-    const where = { date: { gte: startDate, lte: endDate }, userId };
+    const where: Prisma.TransactionWhereInput = { date: { gte: startDate, lte: endDate }, ...this.getScopeWhere(userId, scope) };
 
     const [transactions, incomeAgg, expenseAgg, txCount, byCategory] = await Promise.all([
       this.prisma.transaction.findMany({
@@ -72,7 +87,8 @@ export class ReportsService {
     };
   }
 
-  async getYearly(userId: string, year: number) {
+  async getYearly(userId: string, year: number, scope = 'individual') {
+    const scopeWhere = this.getScopeWhere(userId, scope);
     const months = [];
     for (let m = 1; m <= 12; m++) {
       const startDate = new Date(year, m - 1, 1);
@@ -80,11 +96,11 @@ export class ReportsService {
 
       const [income, expense] = await Promise.all([
         this.prisma.transaction.aggregate({
-          where: { userId, date: { gte: startDate, lte: endDate }, type: 'income' },
+          where: { ...scopeWhere, date: { gte: startDate, lte: endDate }, type: 'income' },
           _sum: { amount: true },
         }),
         this.prisma.transaction.aggregate({
-          where: { userId, date: { gte: startDate, lte: endDate }, type: 'expense' },
+          where: { ...scopeWhere, date: { gte: startDate, lte: endDate }, type: 'expense' },
           _sum: { amount: true },
         }),
       ]);
@@ -99,10 +115,10 @@ export class ReportsService {
     return months;
   }
 
-  async exportCSV(userId: string, month: number, year: number) {
+  async exportCSV(userId: string, month: number, year: number, scope = 'individual') {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
-    const where = { date: { gte: startDate, lte: endDate }, userId };
+    const where: Prisma.TransactionWhereInput = { date: { gte: startDate, lte: endDate }, ...this.getScopeWhere(userId, scope) };
 
     const transactions = await this.prisma.transaction.findMany({
       where,
@@ -131,8 +147,8 @@ export class ReportsService {
     return header + '\n' + rows;
   }
 
-  async exportExcel(userId: string, month: number, year: number) {
-    const data = await this.getMonthly(userId, month, year);
+  async exportExcel(userId: string, month: number, year: number, scope = 'individual') {
+    const data = await this.getMonthly(userId, month, year, scope);
     const monthNames = [
       'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -192,8 +208,8 @@ export class ReportsService {
     return buildExcel(sheets);
   }
 
-  async exportPDF(userId: string, month: number, year: number): Promise<Buffer> {
-    const data = await this.getMonthly(userId, month, year);
+  async exportPDF(userId: string, month: number, year: number, scope = 'individual'): Promise<Buffer> {
+    const data = await this.getMonthly(userId, month, year, scope);
 
     const monthNames = [
       'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',

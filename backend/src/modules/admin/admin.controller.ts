@@ -225,8 +225,8 @@ export class AdminController {
   @Roles('platform_admin')
   @AdminPanel('configs')
   @Put('asaas-config')
-  updateAsaasConfig(@Body() body: AsaasConfigDto) {
-    return this.adminService.updateAsaasConfig(body);
+  updateAsaasConfig(@Body() body: AsaasConfigDto, @Req() req: any) {
+    return this.adminService.updateAsaasConfig(body, req.user?.email);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard, AdminPanelGuard)

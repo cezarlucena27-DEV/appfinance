@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAccountDto, UpdateAccountDto } from './dto/account.dto';
 import { buildExcel } from '../../common/utils/excel.util';
@@ -408,7 +408,19 @@ export class AccountsService {
       const nextInitial = money(dto.initialBalance);
       const delta = nextInitial.minus(money(account.initialBalance));
       data.initialBalance = nextInitial;
-      data.currentBalance = money(account.currentBalance).plus(delta);
+      // Incremento atomico: nao sobrescreve alteracoes de transacoes concorrentes.
+      data.currentBalance = { increment: delta };
+
+      // So aplica se initialBalance ainda for o valor lido; senao o delta seria
+      // somado duas vezes por edicoes concorrentes.
+      const result = await this.prisma.account.updateMany({
+        where: { id, initialBalance: account.initialBalance },
+        data,
+      });
+      if (result.count === 0) {
+        throw new ConflictException('A conta foi alterada por outra operacao. Recarregue e tente novamente.');
+      }
+      return this.prisma.account.findUnique({ where: { id } });
     }
 
     return this.prisma.account.update({

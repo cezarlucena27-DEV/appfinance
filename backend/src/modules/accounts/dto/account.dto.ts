@@ -1,7 +1,7 @@
 import { IsString, IsNumber, IsOptional, IsBoolean, Min, IsIn } from 'class-validator';
 
 const ACCOUNT_TYPES = [
-  'checking', 'savings', 'cash', 'credit', 'investment',
+  'wallet', 'checking', 'savings', 'cash', 'credit', 'investment',
   'corrente', 'poupanca', 'dinheiro', 'credito', 'investimento',
 ];
 

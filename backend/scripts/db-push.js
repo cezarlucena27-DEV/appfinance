@@ -12,3 +12,9 @@ if (r.status !== 0) {
   process.exit(r.status || 1);
 }
 console.log('[ok] Schema aplicado no banco com sucesso');
+
+const n = spawnSync('node', [require('path').join(__dirname, 'normalize-card-brands.js')], { stdio: 'inherit' });
+if (n.status !== 0) {
+  console.error(`[erro] normalizacao de bandeiras falhou com codigo ${n.status}`);
+  process.exit(n.status || 1);
+}

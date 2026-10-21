@@ -21,6 +21,12 @@ export function getSuperAdminEmail(): string {
   return (process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
 }
 
+// Unico ponto de comparacao com o super admin (normaliza espacos e caixa).
+export function isSuperAdmin(email?: string | null): boolean {
+  const superAdminEmail = getSuperAdminEmail();
+  return !!superAdminEmail && String(email || '').trim().toLowerCase() === superAdminEmail;
+}
+
 export function validateSecurityEnv(): void {
   const jwtSecret = getJwtSecret();
   const jwtRefreshSecret = getJwtRefreshSecret();

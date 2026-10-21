@@ -4,11 +4,11 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
 import { AuditService } from './audit.service';
 import { OnlineTracker } from './online-tracker.service';
 import { buildExcel } from '../../common/utils/excel.util';
-import { getSuperAdminEmail } from '../../common/security.config';
+import { isSuperAdmin } from '../../common/security.config';
+import { getAsaasConfigPath } from '../../common/asaas-config.path';
 import { parseDateOnly } from '../../common/date.util';
 import { moneyNumber } from '../../common/money';
 
@@ -26,11 +26,16 @@ export class AdminService {
   // Bloqueia qualquer acao sobre o super admin por quem nao seja o proprio
   // super admin. O ator e o proprio super admin quando seu id ou email batem.
   private assertActorIsSuperAdmin(targetEmail: string, actor: { id?: string; email?: string }) {
-    const superAdminEmail = getSuperAdminEmail();
-    if (!superAdminEmail || targetEmail.toLowerCase() !== superAdminEmail) return;
-    const actorEmail = (actor?.email || '').toLowerCase();
-    if (actorEmail === superAdminEmail) return;
+    if (!isSuperAdmin(targetEmail) || isSuperAdmin(actor?.email)) return;
     throw new ForbiddenException('Somente o super admin pode gerenciar a propria conta');
+  }
+
+  // Administradores da plataforma (exceto o proprio super admin) so podem ser
+  // gerenciados pelo super admin.
+  private assertActorCanManageAdmin(target: { email: string; globalRole: string }, actor: { email?: string }, message: string) {
+    if (target.globalRole !== 'platform_admin') return;
+    if (isSuperAdmin(target.email) || isSuperAdmin(actor?.email)) return;
+    throw new ForbiddenException(message);
   }
 
   private async logAudit(actorId: string | undefined, action: string, entity: string, entityId: string, oldValues: unknown, newValues: unknown) {
@@ -314,14 +319,9 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
     this.assertActorIsSuperAdmin(user.email, actor);
-    if (user.globalRole === 'platform_admin') {
-      const targetIsSuper = !!getSuperAdminEmail() && user.email.toLowerCase() === getSuperAdminEmail();
-      if (!targetIsSuper) {
-        throw new ForbiddenException('Somente o super admin pode editar administradores da plataforma');
-      }
-    }
+    this.assertActorCanManageAdmin(user, actor, 'Somente o super admin pode editar administradores da plataforma');
 
-    const update: { name?: string; email?: string; globalRole?: string; isActive?: boolean; isAdminApproved?: boolean; adminPanels?: string } = {};
+    const update: { name?: string; email?: string; globalRole?: string; isActive?: boolean; isAdminApproved?: boolean; adminPanels?: string; approvedBy?: string | null } = {};
 
     if (data.name !== undefined) {
       const name = data.name.trim();
@@ -332,8 +332,7 @@ export class AdminService {
     if (data.email !== undefined) {
       const email = data.email.trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Email invalido');
-      const roleSuperAdminEmail = getSuperAdminEmail();
-      if (roleSuperAdminEmail && user.email.toLowerCase() === roleSuperAdminEmail && email !== roleSuperAdminEmail) {
+      if (isSuperAdmin(user.email) && !isSuperAdmin(email)) {
         throw new BadRequestException('Nao e possivel alterar o email do super admin');
       }
       if (email !== user.email) {
@@ -346,17 +345,23 @@ export class AdminService {
     if (data.isActive !== undefined) update.isActive = Boolean(data.isActive);
 
     if (data.globalRole !== undefined) {
-      const roleSuperAdminEmail = getSuperAdminEmail();
-      if (roleSuperAdminEmail && user.email.toLowerCase() === roleSuperAdminEmail && data.globalRole !== 'platform_admin') {
+      if (isSuperAdmin(user.email) && data.globalRole !== 'platform_admin') {
         throw new BadRequestException('Nao e possivel rebaixar o super admin');
       }
       if (!['regular', 'platform_admin'].includes(data.globalRole)) {
         throw new BadRequestException('Papel global invalido');
       }
-      update.globalRole = data.globalRole;
-      if (data.globalRole === 'platform_admin') {
+      if (data.globalRole !== user.globalRole) {
+        // Promover ou rebaixar administradores e exclusivo do super admin.
+        if (!isSuperAdmin(actor?.email)) {
+          throw new ForbiddenException('Somente o super admin pode alterar o papel global de um usuario');
+        }
+        update.globalRole = data.globalRole;
+        // Em ambos os casos o usuario sai sem aprovacao nem paineis
+        // (promovido precisa ser aprovado; rebaixado perde o acesso, como em revokeAdmin).
         update.isAdminApproved = false;
         update.adminPanels = '[]';
+        update.approvedBy = null;
       }
     }
 
@@ -390,8 +395,7 @@ export class AdminService {
   }
 
   async createAdmin(data: { name: string; email: string }, actorEmail: string, actorId?: string) {
-    const superAdminEmail = getSuperAdminEmail();
-    if (!superAdminEmail || (actorEmail || '').toLowerCase() !== superAdminEmail) {
+    if (!isSuperAdmin(actorEmail)) {
       throw new ForbiddenException('Apenas o super admin pode incluir administradores');
     }
     const email = data.email.trim().toLowerCase();
@@ -430,13 +434,12 @@ export class AdminService {
   }
 
   async updateAdminPanels(userId: string, panels: string[], actorEmail: string, actorId?: string) {
-    const superAdminEmail = getSuperAdminEmail();
-    if (!superAdminEmail || (actorEmail || '').toLowerCase() !== superAdminEmail) {
+    if (!isSuperAdmin(actorEmail)) {
       throw new ForbiddenException('Apenas o super admin pode gerenciar os paineis');
     }
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
-    if (user.email === superAdminEmail) {
+    if (isSuperAdmin(user.email)) {
       throw new BadRequestException('Nao e possivel restringir o super admin');
     }
     const valid = new Set(ADMIN_PANELS);
@@ -481,13 +484,13 @@ export class AdminService {
   async revokeAdmin(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
-    if (getSuperAdminEmail() && user.email === getSuperAdminEmail()) {
+    if (isSuperAdmin(user.email)) {
       throw new BadRequestException('Nao e possivel revogar o super admin');
     }
 
     return this.prisma.user.update({
       where: { id: userId },
-      data: { globalRole: 'regular', isAdminApproved: false, approvedBy: null },
+      data: { globalRole: 'regular', isAdminApproved: false, approvedBy: null, adminPanels: '[]' },
       select: { id: true, name: true, email: true, globalRole: true, isAdminApproved: true },
     });
   }
@@ -496,9 +499,7 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
     this.assertActorIsSuperAdmin(user.email, actor);
-    if (user.globalRole === 'platform_admin' && !(getSuperAdminEmail() && user.email.toLowerCase() === getSuperAdminEmail())) {
-      throw new ForbiddenException('Somente o super admin pode ativar/desativar administradores da plataforma');
-    }
+    this.assertActorCanManageAdmin(user, actor, 'Somente o super admin pode ativar/desativar administradores da plataforma');
     const nextActive = !user.isActive;
     return this.prisma.user.update({
       where: { id: userId },
@@ -511,15 +512,14 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado');
     this.assertActorIsSuperAdmin(user.email, actor);
-    if (user.globalRole === 'platform_admin' && !(getSuperAdminEmail() && user.email.toLowerCase() === getSuperAdminEmail())) {
-      throw new ForbiddenException('Somente o super admin pode redefinir a senha de administradores da plataforma');
-    }
+    this.assertActorCanManageAdmin(user, actor, 'Somente o super admin pode redefinir a senha de administradores da plataforma');
     const tempPassword = randomBytes(12).toString('base64url') + 'a1';
     const passwordHash = await bcrypt.hash(tempPassword, 12);
     await this.prisma.user.update({
       where: { id: userId },
       data: { passwordHash, tokenVersion: { increment: 1 } },
     });
+    await this.prisma.refreshSession.deleteMany({ where: { userId } });
     return { tempPassword, email: user.email };
   }
 
@@ -604,7 +604,7 @@ export class AdminService {
   }
 
   private getConfigPath() {
-    return join(process.cwd(), 'asaas-config.json');
+    return getAsaasConfigPath();
   }
 
   async getSubscriptionsFinance() {
@@ -781,9 +781,11 @@ export class AdminService {
     }
   }
 
-  async updateAsaasConfig(data: { apiKey?: string; webhookUrl?: string; environment?: string; pixKey?: string }) {
+  async updateAsaasConfig(data: { apiKey?: string; webhookUrl?: string; environment?: string; pixKey?: string }, actorEmail?: string) {
     // Configuracoes de pagamento so podem ser alteradas pelo super admin.
-    throw new ForbiddenException('Apenas o super admin pode alterar configuracoes de pagamento');
+    if (!isSuperAdmin(actorEmail)) {
+      throw new ForbiddenException('Apenas o super admin pode alterar configuracoes de pagamento');
+    }
     const configPath = this.getConfigPath();
     let existing: any = {};
     if (existsSync(configPath)) {

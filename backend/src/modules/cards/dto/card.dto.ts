@@ -1,11 +1,17 @@
 import { IsString, IsNumber, IsOptional, Min, Max, IsIn } from 'class-validator';
+import { Transform } from 'class-transformer';
 
-const CARD_BRANDS = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'diners', 'outra'];
+const CARD_BRANDS = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'diners', 'other'];
+// Codigos antigos aceitos na entrada e gravados sempre no formato canonico.
+const LEGACY_BRANDS: Record<string, string> = { amge: 'amex', outra: 'other' };
+const normalizeBrand = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? (LEGACY_BRANDS[value] ?? value) : value;
 
 export class CreateCardDto {
   @IsString()
   name: string;
 
+  @Transform(normalizeBrand)
   @IsString()
   @IsIn(CARD_BRANDS)
   @IsOptional()
@@ -34,6 +40,7 @@ export class UpdateCardDto {
   @IsOptional()
   name?: string;
 
+  @Transform(normalizeBrand)
   @IsString()
   @IsIn(CARD_BRANDS)
   @IsOptional()

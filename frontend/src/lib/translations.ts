@@ -15,7 +15,7 @@ export const cardBrandLabels: Record<string, string> = {
   visa: 'Visa',
   mastercard: 'Mastercard',
   elo: 'Elo',
-  amge: 'American Express',
+  amex: 'American Express',
   other: 'Outra',
 };
 

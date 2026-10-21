@@ -12,7 +12,9 @@ export class RateLimitGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const path = String(request.path || request.url || '');
-    const strict = /(login|forgot-password|reset-password|refresh|register|payment-receipts)/.test(path);
+    // refresh fica no limite padrao: exige um token assinado (nao ha brute force)
+    // e o frontend o chama a cada carregamento de pagina.
+    const strict = /(login|forgot-password|reset-password|register|payment-receipts)/.test(path);
     const limit = strict ? STRICT_LIMIT : DEFAULT_LIMIT;
     // Usa o IP do socket (nao spoofavel) quando disponivel; request.ip so e
     // confiavel quando TRUST_PROXY esta configurado para o numero real de proxies.

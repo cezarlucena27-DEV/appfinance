@@ -29,6 +29,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         isAdminApproved: true,
         isActive: true,
         tokenVersion: true,
+        subscription: { select: { blocked: true } },
+        memberships: { select: { role: true, workspaceId: true }, take: 1 },
       },
     });
 
@@ -45,18 +47,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Sessao expirada. Entre novamente.');
     }
 
-    const subscription = await this.prisma.subscription.findUnique({
-      where: { userId: user.id },
-      select: { blocked: true },
-    });
-    if (subscription?.blocked && user.globalRole !== 'platform_admin') {
+    if (user.subscription?.blocked && user.globalRole !== 'platform_admin') {
       throw new UnauthorizedException('Conta bloqueada por pendencia financeira. Entre em contato com o financeiro.');
     }
 
-    const membership = await this.prisma.workspaceMember.findFirst({
-      where: { userId: user.id },
-      select: { role: true, workspaceId: true },
-    });
+    const membership = user.memberships[0];
 
     return {
       id: user.id,

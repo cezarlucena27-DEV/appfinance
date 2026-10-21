@@ -92,7 +92,7 @@ export function Cards() {
     visa: '#1A1F71',
     mastercard: '#EB001B',
     elo: '#FF5F00',
-    amge: '#006FCF',
+    amex: '#006FCF',
     other: '#64748B',
   };
 
@@ -218,7 +218,7 @@ export function Cards() {
                   <option value="visa">Visa</option>
                   <option value="mastercard">Mastercard</option>
                   <option value="elo">Elo</option>
-                  <option value="amge">American Express</option>
+                  <option value="amex">American Express</option>
                   <option value="other">Outra</option>
                 </select>
               </div>

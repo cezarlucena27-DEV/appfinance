@@ -49,6 +49,24 @@ model User {
   reminderViews       ReminderView[]
   ownedWorkspaces     Workspace[]
   auditLogs           AuditLog[]
+  refreshSessions     RefreshSession[]
+}
+
+// Uma linha por sessao (dispositivo/navegador). O refresh token carrega o id da
+// sessao (sid) e um jti que muda a cada refresh; reapresentar um jti antigo
+// fora da janela de tolerancia revoga a sessao (deteccao de token roubado).
+model RefreshSession {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentJti  String
+  previousJti String?
+  rotatedAt   DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model Workspace {

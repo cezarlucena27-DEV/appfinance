@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ADMIN_PANEL_KEY } from '../decorators/admin-panel.decorator';
-import { getSuperAdminEmail } from '../security.config';
+import { isSuperAdmin } from '../security.config';
 
 @Injectable()
 export class AdminPanelGuard implements CanActivate {
@@ -24,9 +24,7 @@ export class AdminPanelGuard implements CanActivate {
       throw new ForbiddenException('Acesso restrito a administradores da plataforma');
     }
 
-    const superAdminEmail = getSuperAdminEmail();
-    const isSuperAdmin = Boolean(superAdminEmail) && user.email === superAdminEmail;
-    if (isSuperAdmin) return true;
+    if (isSuperAdmin(user.email)) return true;
 
     if (requiredPanel === 'admins') {
       throw new ForbiddenException('Apenas o super admin pode gerenciar administradores');

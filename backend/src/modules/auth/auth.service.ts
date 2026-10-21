@@ -1,10 +1,17 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { DEFAULT_CATEGORIES } from '../../common/default-categories';
-import { getJwtRefreshSecret, getSuperAdminEmail } from '../../common/security.config';
+import { getJwtRefreshSecret, isSuperAdmin } from '../../common/security.config';
+
+const REFRESH_TTL = '7d';
+const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Janela em que o jti anterior ainda e aceito (abas concorrentes com o mesmo cookie).
+const REFRESH_REUSE_GRACE_MS = 30_000;
+const refreshExpiry = () => new Date(Date.now() + REFRESH_TTL_MS);
 
 const FORGOT_PASSWORD_MESSAGE =
   'Se o e-mail estiver cadastrado, o administrador do workspace foi notificado. Nenhuma senha e exibida por este canal.';
@@ -57,7 +64,7 @@ export class AuthService {
       data: DEFAULT_CATEGORIES.map((cat) => ({ ...cat, userId: user.id })),
     });
 
-    const tokens = this.generateTokens(user, workspace.id, membership.role);
+    const tokens = await this.generateTokens(user, workspace.id, membership.role);
     return {
       user: this.publicUser(user, workspace, 'master'),
       ...tokens,
@@ -86,7 +93,7 @@ export class AuthService {
     }
 
     const blockSubscription = await this.prisma.subscription.findUnique({ where: { userId: user.id } });
-    if (blockSubscription?.blocked) {
+    if (blockSubscription?.blocked && user.globalRole !== 'platform_admin') {
       throw new UnauthorizedException('Conta bloqueada por pendencia financeira. Entre em contato com o financeiro.');
     }
 
@@ -97,7 +104,7 @@ export class AuthService {
 
     const workspaceId = membership?.workspaceId || '';
     const role = membership?.role || 'member';
-    const tokens = this.generateTokens(user, workspaceId, role);
+    const tokens = await this.generateTokens(user, workspaceId, role);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -154,7 +161,7 @@ export class AuthService {
 
     return {
       ...user,
-      isSuperAdmin: !!getSuperAdminEmail() && user.email.toLowerCase() === getSuperAdminEmail(),
+      isSuperAdmin: isSuperAdmin(user.email),
       workspaceId: membership?.workspaceId || '',
       role: membership?.role || 'member',
       workspace: membership?.workspace || undefined,
@@ -186,22 +193,54 @@ export class AuthService {
     }
 
     const subscription = await this.prisma.subscription.findUnique({ where: { userId: user.id } });
-    if (subscription?.blocked) {
+    if (subscription?.blocked && user.globalRole !== 'platform_admin') {
       throw new UnauthorizedException('Conta bloqueada por pendencia financeira. Entre em contato com o financeiro.');
     }
 
-    // Rotaciona o refresh token: o token apresentado deixa de ser valido para
-    // uso unico, limitando a janela de reuso de um token roubado.
-    const rotated = await this.prisma.user.update({
-      where: { id: user.id },
-      data: { tokenVersion: { increment: 1 } },
-    });
+    // Rotacao por sessao: cada refresh token so vale uma vez, sem afetar as
+    // outras sessoes (abas/dispositivos) do usuario.
+    const session = payload.sid
+      ? await this.prisma.refreshSession.findUnique({ where: { id: payload.sid } })
+      : null;
+    if (!session || session.userId !== user.id || session.expiresAt <= new Date()) {
+      throw new UnauthorizedException('Sessao expirada. Entre novamente.');
+    }
 
     const membership = await this.prisma.workspaceMember.findFirst({
       where: { userId: user.id },
     });
+    const workspaceId = membership?.workspaceId || '';
+    const role = membership?.role || 'member';
 
-    return this.generateTokens(rotated, membership?.workspaceId || '', membership?.role || 'member');
+    if (payload.jti !== session.currentJti) {
+      // Duas abas podem enviar o mesmo cookie ao mesmo tempo: o jti anterior
+      // ainda vale por alguns segundos e recebe o token atual, sem nova rotacao.
+      const withinGrace = payload.jti === session.previousJti
+        && session.rotatedAt
+        && Date.now() - session.rotatedAt.getTime() < REFRESH_REUSE_GRACE_MS;
+      if (withinGrace) {
+        return this.signTokens(user, workspaceId, role, session.id, session.currentJti);
+      }
+      // Reuso de token antigo: provavel roubo. Revoga a sessao inteira.
+      await this.prisma.refreshSession.deleteMany({ where: { id: session.id } });
+      throw new UnauthorizedException('Sessao expirada. Entre novamente.');
+    }
+
+    const nextJti = randomUUID();
+    const rotated = await this.prisma.refreshSession.updateMany({
+      where: { id: session.id, currentJti: session.currentJti },
+      data: { currentJti: nextJti, previousJti: session.currentJti, rotatedAt: new Date(), expiresAt: refreshExpiry() },
+    });
+    if (rotated.count === 0) {
+      // Outra requisicao concorrente rotacionou primeiro: devolve o token atual.
+      const latest = await this.prisma.refreshSession.findUnique({ where: { id: session.id } });
+      if (!latest || latest.previousJti !== payload.jti) {
+        throw new UnauthorizedException('Sessao expirada. Entre novamente.');
+      }
+      return this.signTokens(user, workspaceId, role, latest.id, latest.currentJti);
+    }
+
+    return this.signTokens(user, workspaceId, role, session.id, nextJti);
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
@@ -217,8 +256,10 @@ export class AuthService {
       data: { passwordHash, tokenVersion: { increment: 1 } },
     });
 
+    // Senha nova: encerra todas as sessoes antigas e abre uma para este dispositivo.
+    await this.prisma.refreshSession.deleteMany({ where: { userId } });
     const membership = await this.prisma.workspaceMember.findFirst({ where: { userId } });
-    const tokens = this.generateTokens(updated, membership?.workspaceId || '', membership?.role || 'member');
+    const tokens = await this.generateTokens(updated, membership?.workspaceId || '', membership?.role || 'member');
 
     return { message: 'Senha alterada com sucesso', ...tokens };
   }
@@ -228,6 +269,7 @@ export class AuthService {
       where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
     });
+    await this.prisma.refreshSession.deleteMany({ where: { userId } });
     return { message: 'Sessao encerrada' };
   }
 
@@ -253,7 +295,7 @@ export class AuthService {
     const { passwordHash, tokenVersion, ...safeUser } = user;
     return {
       ...safeUser,
-      isSuperAdmin: !!getSuperAdminEmail() && String(user.email).toLowerCase() === getSuperAdminEmail(),
+      isSuperAdmin: isSuperAdmin(user.email),
       role,
       workspaceId: workspace?.id || '',
       workspace: workspace
@@ -262,7 +304,18 @@ export class AuthService {
     };
   }
 
-  private generateTokens(user: any, workspaceId: string, role: string) {
+  // Abre uma nova sessao de refresh (login, cadastro, troca de senha).
+  private async generateTokens(user: any, workspaceId: string, role: string) {
+    // Limpeza oportunista das sessoes vencidas do usuario.
+    await this.prisma.refreshSession.deleteMany({ where: { userId: user.id, expiresAt: { lte: new Date() } } });
+    const jti = randomUUID();
+    const session = await this.prisma.refreshSession.create({
+      data: { userId: user.id, currentJti: jti, expiresAt: refreshExpiry() },
+    });
+    return this.signTokens(user, workspaceId, role, session.id, jti);
+  }
+
+  private signTokens(user: any, workspaceId: string, role: string, sid: string, jti: string) {
     const basePayload = {
       sub: user.id,
       email: user.email,
@@ -274,8 +327,8 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign({ ...basePayload, type: 'access' });
     const refreshToken = this.jwtService.sign(
-      { ...basePayload, type: 'refresh' },
-      { secret: getJwtRefreshSecret(), expiresIn: '7d' },
+      { ...basePayload, type: 'refresh', sid, jti },
+      { secret: getJwtRefreshSecret(), expiresIn: REFRESH_TTL },
     );
 
     return { accessToken, refreshToken };
