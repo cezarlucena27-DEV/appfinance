@@ -14,6 +14,21 @@ import { Roles } from '../../common/decorators/roles.decorator';
 
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
 
+// Endpoint publico: limita o multipart ao que o formulario envia (1 arquivo +
+// senderName, senderEmail, note, todos campos planos). fieldArrayIndexLimit e
+// fieldNestingDepth bloqueiam o DoS por nomes como items[4294967294]
+// (GHSA-535w-7cp7-47q4); os tipos do Nest 10 ainda nao conhecem essas opcoes.
+const RECEIPT_UPLOAD_LIMITS = {
+  fileSize: RECEIPTS_MAX_SIZE,
+  files: 1,
+  fields: 3,
+  parts: 4,
+  fieldNameSize: 50,
+  fieldSize: 10 * 1024,
+  fieldNestingDepth: 0,
+  fieldArrayIndexLimit: 0,
+};
+
 @Controller('public')
 export class PublicPaymentReceiptsController {
   constructor(private receiptsService: PaymentReceiptsService) {}
@@ -30,7 +45,7 @@ export class PublicPaymentReceiptsController {
           cb(null, `${uuid()}${ext}`);
         },
       }),
-      limits: { fileSize: RECEIPTS_MAX_SIZE },
+      limits: RECEIPT_UPLOAD_LIMITS,
       fileFilter: (_req, file, cb) => {
         const ext = extname(file.originalname || '').toLowerCase();
         const mimeOk = RECEIPTS_ALLOWED_MIMES.includes(file.mimetype);
