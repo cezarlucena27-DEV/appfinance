@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, Res, Uploa
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'crypto';
 import { Response } from 'express';
 import { PaymentReceiptsService, RECEIPTS_ALLOWED_MIMES, RECEIPTS_MAX_SIZE, getReceiptsDir } from './payment-receipts.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -42,7 +42,7 @@ export class PublicPaymentReceiptsController {
         filename: (_req, file, cb) => {
           const raw = extname(file.originalname || '').toLowerCase();
           const ext = ALLOWED_EXTENSIONS.includes(raw) ? raw : '.jpg';
-          cb(null, `${uuid()}${ext}`);
+          cb(null, `${randomUUID()}${ext}`);
         },
       }),
       limits: RECEIPT_UPLOAD_LIMITS,
