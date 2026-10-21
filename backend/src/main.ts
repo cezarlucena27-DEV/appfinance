@@ -32,12 +32,12 @@ async function bootstrap() {
   // por rota (visivel nos logs) em vez de derrubar todo o processo.
   if (!process.env.DATABASE_URL) {
     console.warn('[aviso] DATABASE_URL nao definida - usando placeholder; rotas de banco vao falhar');
-    process.env.DATABASE_URL = 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
+    process.env.DATABASE_URL = 'mysql://placeholder:placeholder@localhost:3306/placeholder';
   }
 
   // Pre-flight: valida a URL construindo um cliente descartavel. Se a env
-  // estiver malformada (ex.: colchetes do placeholder do Supabase), substitui
-  // por placeholder para nao derrubar o processo inteiro.
+  // estiver malformada, substitui por placeholder para nao derrubar o
+  // processo inteiro.
   try {
     const { PrismaClient } = require('@prisma/client');
     const probe = new PrismaClient();
@@ -47,7 +47,7 @@ async function bootstrap() {
       '[aviso] DATABASE_URL invalida - ignorando e usando placeholder:',
       e instanceof Error ? e.message.split('\n')[0] : e,
     );
-    process.env.DATABASE_URL = 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
+    process.env.DATABASE_URL = 'mysql://placeholder:placeholder@localhost:3306/placeholder';
   }
 
   const app = await NestFactory.create(AppModule);

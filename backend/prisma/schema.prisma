@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -16,7 +16,7 @@ model User {
   passwordHash         String
   globalRole           String    @default("regular") // platform_admin, regular
   isActive             Boolean   @default(true)
-  deactivatedMessage  String?
+  deactivatedMessage  String?  @db.Text
   isAdminApproved      Boolean   @default(false)
   approvedBy           String?
   adminPanels          String    @default("all")
@@ -119,7 +119,7 @@ model Transaction {
   category           Category? @relation(fields: [categoryId], references: [id])
   type               String // income, expense, transfer
   amount             Float
-  description        String?
+  description        String?        @db.Text
   date               DateTime
   isRecurring        Boolean   @default(false)
   recurrenceType     String?
@@ -128,7 +128,7 @@ model Transaction {
   dueDate            DateTime?
   isPaid             Boolean   @default(true)
   paymentMethod      String?
-  attachmentUrl      String?
+  attachmentUrl      String?        @db.Text
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 }
@@ -234,10 +234,10 @@ model PaymentHistory {
   user        User         @relation(fields: [userId], references: [id])
   planId      String?
   amount      Float
-  status      String       @default("paid")
-  dueDate     DateTime
-  paidAt      DateTime?
-  notes       String?
+  status        String       @default("paid")
+  dueDate       DateTime
+  paidAt        DateTime?
+  notes         String?      @db.Text
   registeredBy String?
   createdAt   DateTime     @default(now())
 }
@@ -250,7 +250,7 @@ model PaymentReceipt {
   size         Int
   senderName   String?
   senderEmail  String?
-  note         String?
+  note         String?  @db.Text
   status       String    @default("pending") // pending, reviewed
   reviewedAt   DateTime?
   reviewedBy   String?
@@ -274,10 +274,10 @@ model AuditLog {
   action    String
   entity    String
   entityId  String
-  oldValues String?
-  newValues String?
+  oldValues String?  @db.Text
+  newValues String?  @db.Text
   ipAddress String?
-  userAgent String?
+  userAgent String?  @db.Text
   createdAt DateTime @default(now())
 }
 

@@ -40,27 +40,34 @@ Se o painel permitir editar comandos manualmente:
 | `JWT_REFRESH_SECRET` | outro segredo forte |
 | `ADMIN_KEY` | nova chave do painel admin |
 | `FRONTEND_URL` | `https://sandybrown-jellyfish-697903.hostingersite.com` |
-| `DATABASE_URL` | string de conexão PostgreSQL (ex.: Supabase) — ver abaixo |
+| `DATABASE_URL` | string de conexão MySQL — ver abaixo |
 
 Gerar segredos: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
 
-## 🗄️ Banco de dados (PostgreSQL — Supabase)
+## 🗄️ Banco de dados (MySQL)
 
-O schema usa PostgreSQL (`provider = "postgresql"`) e lê `DATABASE_URL`.
-Com o Supabase conectado pelo hPanel, a variável é criada automaticamente.
+O schema usa MySQL/MariaDB (`provider = "mysql"`) e lê `DATABASE_URL`.
 
-Formato esperado (pooler do Supabase, funciona em qualquer rede):
+Formato esperado:
 
 ```
-postgresql://postgres.<ref>:SENHA@aws-0-<regiao>.pooler.supabase.com:5432/postgres
+mysql://USUARIO:SENHA@HOST:3306/NOME_DO_BANCO
 ```
 
 Notas:
 
+- Senha com caracteres especiais precisa de URL-encoding na string
+  (`;` → `%3B`, `*` → `%2A`).
+- Se o app rodar no **mesmo plano Hostinger** do banco, use `127.0.0.1:3306`
+  como host (acesso local, sem configurar nada no painel).
+- Se rodar em **outro servidor**, use o hostname mostrado em
+  hPanel → Databases → Remote MySQL e libere o IP desse servidor na mesma
+  página — sem isso o MySQL recusa a conexão com "Access denied for user".
 - O schema do banco é aplicado automaticamente no deploy (`prisma db push`,
   melhor-esforço: se falhar, o app sobe mesmo assim e avisa nos logs).
-- Dados do SQLite antigo NÃO migram sozinhos — usuários precisam se cadastrar
-  de novo (ou migrar dados manualmente).
+- O backup do antigo banco Supabase já foi migrado para este MySQL
+  (conversão em `backend/scripts/pg2mysql.js`); não há nada a fazer em
+  novos deploys.
 - Para dev local, coloque a mesma URL no `backend/.env`.
 
 ---
